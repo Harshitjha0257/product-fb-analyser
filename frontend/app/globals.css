@@ -113,3 +113,20 @@ html:not(.dark) input::placeholder,
 html:not(.dark) textarea::placeholder {
   color: rgba(15, 23, 42, 0.3) !important;
 }
+
+/* Right preview panel */
+html:not(.dark) .preview-panel {
+  background: #e8edf2 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Inner cards inside the right panel */
+html:not(.dark) .preview-panel .border.rounded-xl {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Score bars track inside preview panel */
+html:not(.dark) .preview-panel .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}

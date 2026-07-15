@@ -258,7 +258,7 @@ export default function Home() {
         </div>
 
         {/* RIGHT — Live Preview */}
-        <div className="hidden lg:flex flex-col border-l border-white/5" style={{ background: "rgba(0,0,0,0.5)" }}>
+        <div className="preview-panel hidden lg:flex flex-col border-l border-white/5" style={{ background: "rgba(0,0,0,0.5)" }}>
 
           <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2.5">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
