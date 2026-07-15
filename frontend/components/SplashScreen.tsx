@@ -7,8 +7,8 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
   useEffect(() => {
     const t0 = setTimeout(() => setPhase(1), 60);
     const t1 = setTimeout(() => setPhase(2), 950);
-    const t2 = setTimeout(() => setPhase(3), 2400);
-    const t3 = setTimeout(() => onComplete(), 3100);
+    const t2 = setTimeout(() => setPhase(3), 3600);
+    const t3 = setTimeout(() => onComplete(), 4300);
     return () => [t0, t1, t2, t3].forEach(clearTimeout);
   }, []);
 
@@ -82,7 +82,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
             letterSpacing: "-3px", color: "#fff",
             textShadow: "0 0 80px rgba(239,68,68,0.35), 0 0 160px rgba(239,68,68,0.15)",
           }}>
-            FB <span style={{ color: "#ef4444" }}>Analyser</span>
+            Product <span style={{ color: "#ef4444" }}>Analyser</span>
           </div>
 
           {/* Divider line */}
@@ -125,7 +125,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           height: "100%",
           background: "linear-gradient(90deg, #ef4444, #f97316)",
           width: phase >= 1 ? "100%" : "0%",
-          transition: "width 2.2s cubic-bezier(0.4,0,0.2,1)",
+          transition: "width 3.4s cubic-bezier(0.4,0,0.2,1)",
           boxShadow: "0 0 8px rgba(239,68,68,0.7)",
         }} />
       </div>
