@@ -51,3 +51,65 @@
 /* Glow border */
 .glow-red { box-shadow: 0 0 0 1px rgba(239,68,68,0.3), 0 0 24px rgba(239,68,68,0.08); }
 .glow-red-lg { box-shadow: 0 0 40px rgba(239,68,68,0.15); }
+
+/* ─── Light mode overrides ────────────────────────────────────── */
+html:not(.dark) body {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+html:not(.dark) .bg-black {
+  background-color: #f1f5f9 !important;
+}
+html:not(.dark) .bg-black\/80,
+html:not(.dark) .bg-black\/60,
+html:not(.dark) .bg-black\/50 {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+}
+
+html:not(.dark) .bg-white\/5,
+html:not(.dark) .bg-white\/3 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html:not(.dark) .text-white {
+  color: #0f172a !important;
+}
+html:not(.dark) .text-white\/60,
+html:not(.dark) .text-white\/50,
+html:not(.dark) .text-white\/40,
+html:not(.dark) .text-white\/35 {
+  color: rgba(15, 23, 42, 0.65) !important;
+}
+html:not(.dark) .text-white\/30,
+html:not(.dark) .text-white\/25,
+html:not(.dark) .text-white\/20 {
+  color: rgba(15, 23, 42, 0.45) !important;
+}
+html:not(.dark) .text-white\/15,
+html:not(.dark) .text-white\/10 {
+  color: rgba(15, 23, 42, 0.28) !important;
+}
+
+html:not(.dark) .border-white\/5,
+html:not(.dark) .border-white\/8,
+html:not(.dark) .border-white\/10,
+html:not(.dark) .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html:not(.dark) .bg-red-grid {
+  background-image:
+    linear-gradient(rgba(239,68,68,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239,68,68,0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+html:not(.dark) input,
+html:not(.dark) textarea {
+  color: #0f172a !important;
+}
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: rgba(15, 23, 42, 0.3) !important;
+}

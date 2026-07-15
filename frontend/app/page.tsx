@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import ThemeToggle from "@/components/ThemeToggle";
+import TokenBar from "@/components/TokenBar";
 
 type HistoryEntry = {
   id: string;
@@ -120,9 +121,7 @@ export default function Home() {
             className="text-xs font-bold text-blue-400 hover:text-blue-300 border border-blue-500/30 hover:border-blue-400/60 rounded-lg px-3 py-1.5 transition-all">
             Company Analyser →
           </a>
-          <span className="hidden md:block text-[10px] text-white/20 uppercase tracking-widest">
-            Groq · llama-3.1-8b · RAG
-          </span>
+          <TokenBar />
           <ThemeToggle />
         </div>
       </header>
