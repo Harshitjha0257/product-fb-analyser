@@ -178,6 +178,19 @@ Analogy: imagine you ask a consultant to score a startup. Without prep, they'll 
 
 ---
 
+## Live Deployment
+
+| Service | URL |
+|---|---|
+| **Frontend** (Vercel) | https://product-fb-analyser-q6c77ew7l-app-demo1.vercel.app |
+| **Backend** (Render) | https://product-fb-analyser.onrender.com |
+
+The frontend auto-deploys from `main` via Vercel. The backend auto-deploys from `main` via Render. All API calls in the frontend point to the Render URL; CORS is configured to allow the Vercel origin.
+
+> **Note:** Render's free tier spins down after 15 minutes of inactivity. The first request after a cold start may take 30–60 seconds to respond.
+
+---
+
 ## Running Locally
 
 ### Backend
