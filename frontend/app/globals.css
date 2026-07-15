@@ -1,3 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes slide-right {
+  from { width: 0; } to { width: 100%; }
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50%       { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+}
+@keyframes scan {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(100vh); }
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes counter {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-up  { animation: fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-fade-in  { animation: fade-in 0.5s ease both; }
+.animate-ticker   { animation: ticker 22s linear infinite; }
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+
+/* Red grid background */
+.bg-red-grid {
+  background-image:
+    linear-gradient(rgba(239,68,68,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239,68,68,0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Glow border */
+.glow-red { box-shadow: 0 0 0 1px rgba(239,68,68,0.3), 0 0 24px rgba(239,68,68,0.08); }
+.glow-red-lg { box-shadow: 0 0 40px rgba(239,68,68,0.15); }

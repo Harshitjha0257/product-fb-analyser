@@ -28,7 +28,7 @@ export default function TokenBar() {
 
   useEffect(() => {
     fetch();
-    const t = setInterval(fetch, 60_000); // refresh every 60s
+    const t = setInterval(fetch, 300_000); // refresh every 5 min
     return () => clearInterval(t);
   }, []);
 

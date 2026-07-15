@@ -1,8 +1,9 @@
 import './globals.css'
+import SplashWrapper from '@/components/SplashWrapper'
 
 export const metadata = {
-  title: 'Product Feedback Analyser',
-  description: 'Investor lens · Product Feedback Analyser',
+  title: 'FB Analyser — Investment Intelligence',
+  description: 'Feedback Analyser + Company Analyser — Investment-grade AI analysis platform',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,8 +16,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
-        {children}
+      <body className="bg-black text-white transition-colors duration-200">
+        <SplashWrapper>{children}</SplashWrapper>
       </body>
     </html>
   )

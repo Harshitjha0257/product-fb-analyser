@@ -61,7 +61,7 @@ async def analyse(request: FeedbackRequest):
         )
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=1500,
@@ -96,7 +96,7 @@ async def chat(request: ChatRequest):
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.4,
             max_tokens=400,
@@ -121,6 +121,16 @@ class CompanyChatRequest(BaseModel):
 
 _executor = ThreadPoolExecutor(max_workers=5)
 
+# Cache token usage from real API errors — no dedicated Groq call needed
+_token_cache: dict = {"limit": 500000, "used": 0, "remaining": 500000, "pct_used": 0.0, "reset": "", "rate_limited": False}
+
+def _parse_rate_limit_error(error_msg: str):
+    m = re.search(r"Used (\d+).*?Limit (\d+).*?Please try again in (.+?)\.", str(error_msg))
+    if m:
+        used, limit, reset = int(m.group(1)), int(m.group(2)), m.group(3).strip()
+        _token_cache.update({"limit": limit, "used": used, "remaining": limit - used,
+                             "pct_used": round((used / limit) * 100, 1), "reset": reset, "rate_limited": True})
+
 def _split_companies(name: str) -> list:
     parts = re.split(r",|\s+and\s+", name, flags=re.IGNORECASE)
     return [p.strip() for p in parts if p.strip()]
@@ -136,17 +146,20 @@ async def analyse_company_endpoint(request: CompanyRequest):
 
         if len(companies) > 1:
             tasks = [
-                loop.run_in_executor(_executor, analyse_company, name, None, request.raw_data)
+                loop.run_in_executor(_executor, analyse_company, name, request.raw_data)
                 for name in companies[:5]
             ]
             results = list(await asyncio.gather(*tasks))
+            _token_cache.update({"rate_limited": False, "remaining": max(0, _token_cache["remaining"] - 5000)})
             return {"mode": "compare", "companies": results}
         else:
             result = await loop.run_in_executor(
-                _executor, analyse_company, request.company_name, request.url, request.raw_data
+                _executor, analyse_company, request.company_name, request.raw_data
             )
+            _token_cache.update({"rate_limited": False, "remaining": max(0, _token_cache["remaining"] - 2000)})
             return {"mode": "single", **result}
     except Exception as e:
+        _parse_rate_limit_error(str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -173,7 +186,7 @@ Answer questions about this company as a VC analyst. Be concise and direct — 2
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.4,
             max_tokens=400,
@@ -217,7 +230,7 @@ Answer comparative questions with conviction. Be direct and concise — 2-3 sent
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.4,
             max_tokens=400,
@@ -229,33 +242,8 @@ Answer comparative questions with conviction. Be direct and concise — 2-3 sent
 
 @app.get("/token-usage")
 async def token_usage():
-    try:
-        raw = client.chat.completions.with_raw_response.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": "ping"}],
-            max_tokens=1,
-        )
-        h = dict(raw.headers)
-        limit = int(h.get("x-ratelimit-limit-tokens-day", 100000))
-        remaining = int(h.get("x-ratelimit-remaining-tokens-day", 0))
-        used = limit - remaining
-        reset = h.get("x-ratelimit-reset-tokens-day", "")
-        return {
-            "limit": limit,
-            "used": used,
-            "remaining": remaining,
-            "pct_used": round((used / limit) * 100, 1),
-            "reset": reset,
-        }
-    except Exception as e:
-        msg = str(e)
-        import re as _re
-        m = _re.search(r"Used (\d+).*Limit (\d+)", msg)
-        if m:
-            used, limit = int(m.group(1)), int(m.group(2))
-            return {"limit": limit, "used": used, "remaining": limit - used,
-                    "pct_used": round((used / limit) * 100, 1), "reset": "~1h", "rate_limited": True}
-        return {"limit": 100000, "used": 100000, "remaining": 0, "pct_used": 100, "reset": "unknown", "rate_limited": True}
+    # Returns cached data from real API calls — does NOT make a Groq request
+    return _token_cache
 
 
 @app.get("/health")

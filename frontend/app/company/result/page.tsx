@@ -271,7 +271,7 @@ export default function CompanyResultPage() {
             ))}
           </div>
           <div className="p-3 border-t border-gray-200 dark:border-gray-800 shrink-0">
-            <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest">Groq · llama-3.3-70b</p>
+            <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest">Groq · llama-3.1-8b</p>
           </div>
         </aside>
 
