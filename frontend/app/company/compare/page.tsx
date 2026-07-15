@@ -142,7 +142,7 @@ function CompareChat({ companies }: { companies: any[] }) {
     setInput("");
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:8000/compare-chat", { companies, message: msg, history: messages });
+      const res = await axios.post("https://product-fb-analyser.onrender.com/compare-chat", { companies, message: msg, history: messages });
       setMessages(p => [...p, { role: "assistant", content: res.data.reply }]);
     } catch {
       setMessages(p => [...p, { role: "assistant", content: "Backend error — is the server running?" }]);

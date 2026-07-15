@@ -17,7 +17,7 @@ export default function TokenBar() {
 
   const fetch = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/token-usage");
+      const res = await axios.get("https://product-fb-analyser.onrender.com/token-usage");
       setUsage(res.data);
     } catch {
       setUsage(null);

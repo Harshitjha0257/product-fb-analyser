@@ -81,7 +81,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.post("http://localhost:8000/analyse", {
+      const res = await axios.post("https://product-fb-analyser.onrender.com/analyse", {
         feedback,
         product_name: productName,
       });

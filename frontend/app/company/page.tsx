@@ -94,7 +94,7 @@ export default function CompanyPage() {
       ? setInterval(() => { ticker += 1; setStep(Math.min(ticker, STEPS.length - 1)); }, 3500)
       : null;
     try {
-      const res = await axios.post("http://localhost:8000/analyse-company", {
+      const res = await axios.post("https://product-fb-analyser.onrender.com/analyse-company", {
         company_name: companyName.trim(),
         raw_data: rawData.trim() || null,
       });

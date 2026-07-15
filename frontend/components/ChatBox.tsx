@@ -13,7 +13,7 @@ type Props = {
   buildPayload?: (analysisData: any, msg: string, history: Message[]) => object;
 };
 
-export default function ChatBox({ analysisData, suggestedQuestions = [], embedded = false, analysisId, apiEndpoint = "http://localhost:8000/chat", buildPayload }: Props) {
+export default function ChatBox({ analysisData, suggestedQuestions = [], embedded = false, analysisId, apiEndpoint = "https://product-fb-analyser.onrender.com/chat", buildPayload }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

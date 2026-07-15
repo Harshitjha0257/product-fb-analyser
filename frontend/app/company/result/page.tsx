@@ -441,7 +441,7 @@ export default function CompanyResultPage() {
                   analysisData={data}
                   suggestedQuestions={data.follow_up_questions ?? []}
                   analysisId={data._id}
-                  apiEndpoint="http://localhost:8000/company-chat"
+                  apiEndpoint="https://product-fb-analyser.onrender.com/company-chat"
                   buildPayload={companyChatPayload}
                 />
               </div>
