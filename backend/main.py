@@ -52,11 +52,13 @@ async def analyse(request: FeedbackRequest):
         raise HTTPException(status_code=400, detail="Feedback cannot be empty")
 
     try:
-        query = f"{request.product_name} {request.feedback[:600]}"
-        vc_context = retrieve_context(query, n_results=3)
+        # Truncate to stay within Groq free-tier TPM limit (6000 tokens/min)
+        feedback_trimmed = request.feedback[:3000]
+        query = f"{request.product_name} {feedback_trimmed[:400]}"
+        vc_context = retrieve_context(query, n_results=2)
 
         prompt = build_prompt(
-            feedback=request.feedback,
+            feedback=feedback_trimmed,
             product_name=request.product_name or "",
             vc_context=vc_context,
         )
@@ -65,7 +67,7 @@ async def analyse(request: FeedbackRequest):
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=1500,
+            max_tokens=1000,
         )
 
         if response.usage:

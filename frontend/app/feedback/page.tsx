@@ -281,13 +281,20 @@ export default function FeedbackAnalyser() {
               </div>
 
               {inputTab === "paste" ? (
-                <textarea
-                  className="w-full bg-transparent text-white text-sm placeholder:text-white/15 focus:outline-none resize-none leading-relaxed"
-                  rows={7}
-                  placeholder={"Paste raw user feedback here...\n\nApp store reviews · Survey responses · Support tickets\nNPS comments · G2 / Capterra reviews"}
-                  value={feedback}
-                  onChange={e => setFeedback(e.target.value)}
-                />
+                <>
+                  <textarea
+                    className="w-full bg-transparent text-white text-sm placeholder:text-white/15 focus:outline-none resize-none leading-relaxed"
+                    rows={7}
+                    placeholder={"Paste raw user feedback here...\n\nApp store reviews · Survey responses · Support tickets\nNPS comments · G2 / Capterra reviews"}
+                    value={feedback}
+                    onChange={e => setFeedback(e.target.value)}
+                  />
+                  {feedback.length > 0 && (
+                    <p className={`text-right text-[10px] mt-1 font-mono ${feedback.length > 3000 ? "text-amber-400" : "text-white/20"}`}>
+                      {feedback.length.toLocaleString()} / 3,000 chars{feedback.length > 3000 ? " — text will be trimmed" : ""}
+                    </p>
+                  )}
+                </>
               ) : (
                 <div
                   onDragOver={e => { e.preventDefault(); setDragOver(true); }}
