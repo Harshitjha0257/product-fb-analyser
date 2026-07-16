@@ -412,7 +412,7 @@ export default function ComparePage() {
                         { l: "Stock", v: c.financials?.stock_trend },
                         { l: "Profitability", v: c.financials?.profitability || (c.revenue_signal === "Strong" ? "Profitable" : undefined) },
                         { l: "Growth", v: c.growth_signal },
-                      ].filter(x => x.v && x.v !== "—" && x.v !== "Unknown").slice(0, 4).map(({ l, v }) => (
+                      ].filter((x): x is { l: string; v: string } => Boolean(x.v && x.v !== "—" && x.v !== "Unknown")).slice(0, 4).map(({ l, v }) => (
                         <div key={l} className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5">
                           <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{l}</p>
                           <p className={`text-xs font-bold mt-0.5 ${

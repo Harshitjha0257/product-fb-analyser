@@ -232,7 +232,7 @@ export default function CompanyResultPage() {
   const handleCompare = () => {
     const custom = compareInput.trim() ? [compareInput.trim()] : [];
     const all = [data.company_name, ...selectedCompetitors, ...custom].filter(Boolean);
-    const names = [...new Set(all)].slice(0, 3);
+    const names = Array.from(new Set(all)).slice(0, 3);
     if (names.length < 2) return;
     router.push(`/company?q=${encodeURIComponent(names.join(","))}`);
   };
