@@ -30,7 +30,7 @@ function formatDate(iso: string) {
 function saveToHistory(analysis: any): HistoryEntry[] {
   const entry: HistoryEntry = {
     id: analysis._id || Date.now().toString(),
-    productName: analysis.product_name || "Unknown Product",
+    productName: analysis.product_name || "—",
     verdict: analysis.verdict || "PASS",
     investmentScore: analysis.investment_score || 0,
     confidence: analysis.confidence || "—",
@@ -357,6 +357,24 @@ export default function ResultPage() {
               investmentScore={data.investment_score}
               productName={data.product_name}
             />
+
+            {/* Verdict Legend */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { v: "INVEST", range: "7–10", desc: "Strong conviction — compelling investment opportunity with clear PMF and growth signals.", color: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30", badge: "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300" },
+                { v: "WATCH",  range: "4–6",  desc: "Promising but not proven — monitor the space and wait for stronger signals before committing.", color: "border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30", badge: "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300" },
+                { v: "PASS",   range: "1–3",  desc: "Weak fundamentals or poor PMF — not a compelling opportunity at this stage.", color: "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30", badge: "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300" },
+              ].map(({ v, range, desc, color, badge }) => (
+                <div key={v} className={`rounded-xl border p-3 ${color} ${data.verdict === v ? "ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-950 " + (v === "INVEST" ? "ring-emerald-400" : v === "WATCH" ? "ring-yellow-400" : "ring-red-400") : "opacity-60"}`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${badge}`}>{v}</span>
+                    <span className="text-[10px] text-gray-400 font-mono">{range}/10</span>
+                    {data.verdict === v && <span className="ml-auto text-[10px] font-black text-gray-500 dark:text-gray-400">← THIS RESULT</span>}
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{desc}</p>
+                </div>
+              ))}
+            </div>
 
             {/* 01 PERFORMANCE SCORECARD */}
             <section>
