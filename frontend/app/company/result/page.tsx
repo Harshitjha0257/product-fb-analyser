@@ -149,6 +149,8 @@ export default function CompanyResultPage() {
   const [data, setData] = useState<any>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const router = useRouter();
+  const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([]);
+  const [exported, setExported] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("company_result");
@@ -156,6 +158,8 @@ export default function CompanyResultPage() {
     const analysis = JSON.parse(raw);
     setData(analysis);
     setHistory(saveToHistory(analysis));
+    const competitors = (analysis.competitive_map || []).slice(0, 2).map((c: any) => c.name);
+    setSelectedCompetitors(competitors);
   }, []);
 
   if (!data) return (
@@ -181,6 +185,48 @@ export default function CompanyResultPage() {
     : data.exit_potential === "PE Buyout" ? "text-yellow-600 dark:text-yellow-400" : "text-gray-500";
   const confColor = data.confidence === "High" ? "text-emerald-600 dark:text-emerald-400"
     : data.confidence === "Medium" ? "text-yellow-600 dark:text-yellow-400" : "text-gray-500";
+
+  const exportJSON = () => {
+    const clean = { ...data };
+    delete clean._id;
+    delete clean._feedback;
+    const blob = new Blob([JSON.stringify(clean, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(data.company_name || "company").replace(/\s+/g, "_")}_analysis.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExported(true);
+    setTimeout(() => setExported(false), 2000);
+  };
+
+  const exportCSV = () => {
+    const fields: [string, any][] = [
+      ["Company", data.company_name],
+      ["Verdict", data.verdict],
+      ["Investment Score", data.investment_score],
+      ["Moat Score", data.moat_score],
+      ["Market Timing Score", data.market_timing_score],
+      ["Confidence", data.confidence],
+      ["Growth Signal", data.growth_signal],
+      ["Revenue Signal", data.revenue_signal],
+      ["Churn Risk", data.churn_risk],
+      ["Exit Potential", data.exit_potential],
+      ["Funding Stage", data.funding_stage],
+      ["Bull Case", data.bull_case],
+      ["Bear Case", data.bear_case],
+    ];
+    const header = fields.map(([k]) => `"${k}"`).join(",");
+    const row = fields.map(([, v]) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",");
+    const blob = new Blob([header + "\n" + row], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(data.company_name || "company").replace(/\s+/g, "_")}_analysis.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const companyChatPayload = (analysisData: any, msg: string, history: any[]) => ({
     company_name: analysisData.company_name ?? "",
@@ -219,6 +265,12 @@ export default function CompanyResultPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <button onClick={exportCSV} className="text-xs font-semibold text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 px-3 py-2 rounded-lg transition-all">
+            ↓ CSV
+          </button>
+          <button onClick={exportJSON} className={`text-xs font-semibold px-3 py-2 rounded-lg transition-all border ${exported ? "border-emerald-400 text-emerald-600" : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400"}`}>
+            {exported ? "✓ Exported" : "↓ JSON"}
+          </button>
           <ThemeToggle />
           <button
             onClick={() => router.push("/company")}
@@ -433,9 +485,68 @@ export default function CompanyResultPage() {
               </section>
             )}
 
-            {/* 08 ASK THE ANALYST */}
+            {/* 08 COMPARE WITH COMPETITORS */}
+            {data.competitive_map?.length > 0 && (
+              <section>
+                <SectionDivider num="08" title="Compare with Competitors" />
+                <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
+                  <p className="text-xs text-gray-500 italic mb-4">
+                    Select competitors to run a side-by-side comparison. You are already included — up to 2 more (3 total).
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    {/* Current company — locked */}
+                    <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      {data.company_name}
+                      <span className="text-[10px] text-blue-400 font-normal">(you)</span>
+                    </span>
+                    {/* Competitor chips */}
+                    {data.competitive_map.map((c: any) => {
+                      const selected = selectedCompetitors.includes(c.name);
+                      const atMax = selectedCompetitors.length >= 2 && !selected;
+                      return (
+                        <button
+                          key={c.name}
+                          disabled={atMax}
+                          onClick={() => setSelectedCompetitors(prev =>
+                            prev.includes(c.name) ? prev.filter(n => n !== c.name) : [...prev, c.name]
+                          )}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                            selected
+                              ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white"
+                              : atMax
+                              ? "bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed"
+                              : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-500"
+                          }`}
+                        >
+                          {selected ? "✓ " : ""}{c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400">
+                      {selectedCompetitors.length + 1}/3 companies selected
+                      {selectedCompetitors.length >= 2 && <span className="text-amber-500 ml-1">· max reached</span>}
+                    </p>
+                    <button
+                      disabled={selectedCompetitors.length === 0}
+                      onClick={() => {
+                        const names = [data.company_name, ...selectedCompetitors].join(",");
+                        router.push(`/company?q=${encodeURIComponent(names)}`);
+                      }}
+                      className="flex items-center gap-2 text-sm font-black px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-all"
+                    >
+                      Compare Now →
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* 09 ASK THE ANALYST */}
             <section>
-              <SectionDivider num="08" title="Ask the Analyst" />
+              <SectionDivider num="09" title="Ask the Analyst" />
               <div className="mt-4">
                 <ChatBox
                   analysisData={data}

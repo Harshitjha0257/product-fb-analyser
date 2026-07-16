@@ -62,10 +62,17 @@ export default function CompanyPage() {
   const isManualMode = rawData.trim().length > 0;
   const companyList = companyName.split(/,|\s+and\s+/i).map(s => s.trim()).filter(Boolean);
   const isCompareMode = companyList.length > 1;
+  const isTooMany = companyList.length > 3;
 
   useEffect(() => {
     // Pre-warm Render backend on page load so it's awake by the time user submits
     fetch("https://product-fb-analyser.onrender.com/health").catch(() => {});
+
+    // Pre-fill from ?q= URL param (set by "Compare Now" button in result page)
+    if (typeof window !== "undefined") {
+      const q = new URLSearchParams(window.location.search).get("q");
+      if (q) setCompanyName(q);
+    }
 
     try {
       const h: HistoryEntry[] = JSON.parse(localStorage.getItem("company_history") || "[]");
@@ -280,6 +287,11 @@ export default function CompanyPage() {
               )}
             </div>
 
+            {isTooMany && (
+              <p className="px-5 pb-3 text-xs text-amber-500 flex items-center gap-1.5">
+                ⚠ Maximum 3 companies for comparison. Please remove {companyList.length - 3} company{companyList.length - 3 > 1 ? "ies" : ""}.
+              </p>
+            )}
             {error && (
               <p className={`px-5 pb-3 text-xs flex items-center gap-2 ${retryCountdown > 0 ? "text-amber-400" : "text-red-400"}`}>
                 {retryCountdown > 0 && <span className="w-3 h-3 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />}
@@ -289,7 +301,7 @@ export default function CompanyPage() {
 
             <button
               onClick={analyse}
-              disabled={loading || !companyName.trim()}
+              disabled={loading || !companyName.trim() || isTooMany}
               className="w-full py-4 font-black text-sm tracking-[0.12em] uppercase transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
                 background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",

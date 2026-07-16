@@ -219,6 +219,7 @@ export default function ComparePage() {
   const [data, setData] = useState<any>(null);
   const [swotKey, setSwotKey] = useState<"strengths" | "weaknesses" | "opportunities" | "threats">("strengths");
   const router = useRouter();
+  const [exported, setExported] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("compare_result");
@@ -231,6 +232,38 @@ export default function ComparePage() {
       <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `comparison_${companies.map((c: any) => c.company_name).join("_vs_")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExported(true);
+    setTimeout(() => setExported(false), 2000);
+  };
+
+  const exportCSV = () => {
+    const keys: [string, string][] = [
+      ["Company", "company_name"], ["Verdict", "verdict"],
+      ["Investment Score", "investment_score"], ["Moat Score", "moat_score"],
+      ["Market Timing Score", "market_timing_score"], ["Confidence", "confidence"],
+      ["Growth Signal", "growth_signal"], ["Revenue Signal", "revenue_signal"],
+      ["Churn Risk", "churn_risk"], ["Exit Potential", "exit_potential"],
+      ["Funding Stage", "funding_stage"], ["Bull Case", "bull_case"], ["Bear Case", "bear_case"],
+    ];
+    const header = keys.map(([k]) => `"${k}"`).join(",");
+    const rows = companies.map((c: any) => keys.map(([, k]) => `"${String(c[k] ?? "").replace(/"/g, '""')}"`).join(","));
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `comparison_${companies.map((c: any) => c.company_name).join("_vs_")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const companies: any[] = data.companies || [];
   const colors = companies.map((_, i) => PALETTE[i % PALETTE.length]);
@@ -271,6 +304,12 @@ export default function ComparePage() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          <button onClick={exportCSV} className="text-xs font-semibold text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-400 px-3 py-2 rounded-lg transition-all hidden sm:block">
+            ↓ CSV
+          </button>
+          <button onClick={exportJSON} className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all hidden sm:block ${exported ? "border-emerald-400 text-emerald-600" : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400"}`}>
+            {exported ? "✓ Exported" : "↓ JSON"}
+          </button>
           <ThemeToggle />
           <button onClick={() => router.push("/company")}
             className="text-sm font-bold text-white bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-xl transition-all">
@@ -557,7 +596,32 @@ export default function ComparePage() {
         </div>
       </section>
 
-      <div className="h-10 shrink-0" />
+      {/* Add more companies / max reached */}
+      <section className="w-full bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 px-8 py-6">
+        {companies.length < 3 ? (
+          <div className="flex items-center gap-4 flex-wrap">
+            <p className="text-sm font-bold text-gray-600 dark:text-gray-400">
+              Add {3 - companies.length} more company to compare:
+            </p>
+            <button
+              onClick={() => {
+                const names = companies.map((c: any) => c.company_name).join(",");
+                router.push(`/company?q=${encodeURIComponent(names + ",")}`);
+              }}
+              className="flex items-center gap-2 text-sm font-black px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white transition-all"
+            >
+              + Add Company →
+            </button>
+            <p className="text-xs text-gray-400">Currently comparing {companies.length}/3 companies</p>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 flex items-center gap-2">
+            <span className="text-amber-500 font-bold">⚠</span>
+            Maximum 3 companies for comparison reached.
+          </p>
+        )}
+      </section>
+      <div className="h-6 shrink-0" />
     </div>
   );
 }

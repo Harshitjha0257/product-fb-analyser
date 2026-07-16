@@ -168,6 +168,7 @@ export default function ResultPage() {
   const [data, setData] = useState<any>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const router = useRouter();
+  const [exported, setExported] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("result");
@@ -228,6 +229,49 @@ export default function ResultPage() {
 
   const isInvest = data.verdict === "INVEST";
 
+  const exportJSON = () => {
+    const clean = { ...data };
+    delete clean._id;
+    delete clean._feedback;
+    const blob = new Blob([JSON.stringify(clean, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(data.product_name || "feedback").replace(/\s+/g, "_")}_analysis.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExported(true);
+    setTimeout(() => setExported(false), 2000);
+  };
+
+  const exportCSV = () => {
+    const fields: [string, any][] = [
+      ["Product", data.product_name],
+      ["Verdict", data.verdict],
+      ["Investment Score", data.investment_score],
+      ["PMF Score", data.pmf_score],
+      ["Sentiment Score", data.sentiment_score],
+      ["Moat Score", data.moat_score],
+      ["Retention Score", data.retention_score],
+      ["Confidence", data.confidence],
+      ["Churn Risk", data.churn_risk],
+      ["Revenue Signal", data.revenue_signal],
+      ["Growth Signal", data.growth_signal],
+      ["Exit Potential", data.exit_potential],
+      ["Bull Case", data.investment_thesis],
+      ["Bear Case", data.bear_case],
+    ];
+    const header = fields.map(([k]) => `"${k}"`).join(",");
+    const row = fields.map(([, v]) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",");
+    const blob = new Blob([header + "\n" + row], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(data.product_name || "feedback").replace(/\s+/g, "_")}_analysis.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
 
@@ -266,6 +310,12 @@ export default function ResultPage() {
 
         {/* Controls */}
         <div className="flex items-center gap-2 shrink-0">
+          <button onClick={exportCSV} className="text-xs font-semibold text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-400 px-3 py-2 rounded-lg transition-all hidden sm:block">
+            ↓ CSV
+          </button>
+          <button onClick={exportJSON} className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-all hidden sm:block ${exported ? "border-emerald-400 text-emerald-600" : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400"}`}>
+            {exported ? "✓ Exported" : "↓ JSON"}
+          </button>
           <ThemeToggle />
           <button
             onClick={() => router.push("/")}
