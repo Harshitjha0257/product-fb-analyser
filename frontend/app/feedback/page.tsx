@@ -62,9 +62,24 @@ export default function FeedbackAnalyser() {
 
   const extractNameFromFilename = (filename: string): string => {
     const NOISE = new Set(["bad","negative","positive","good","reviews","review","feedback","sample","test","data","doc","file","support","tickets","ticket","comments","comment","survey","nps","qa","testing"]);
-    const base = filename.replace(/\.[^.]+$/, ""); // strip extension
+    const base = filename.replace(/\.[^.]+$/, "");
     const words = base.split(/[\s_\-]+/).filter(w => w.length > 1 && !NOISE.has(w.toLowerCase()));
     return words.slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  };
+
+  const extractNameFromPastedText = (text: string): string => {
+    const head = text.slice(0, 600);
+    const patterns = [
+      /—\s*([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)\s*$/m,
+      /(?:Reviews?|Tickets?|Feedback|Support)[^\n—]*—\s*([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)/i,
+      /^#+\s*([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)\s+(?:Reviews?|Tickets?|Feedback|Support)/m,
+      /\bfor\s+([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)\b/,
+    ];
+    for (const p of patterns) {
+      const m = head.match(p);
+      if (m && m[1] && m[1].length > 1) return m[1].trim();
+    }
+    return "";
   };
 
   const handleFile = async (file: File) => {
@@ -139,10 +154,12 @@ export default function FeedbackAnalyser() {
     setLoading(true);
     setError("");
 
+    const resolvedName = productName.trim() || extractNameFromPastedText(feedback);
+
     const attempt = () =>
       axios.post(
         "https://product-fb-analyser.onrender.com/analyse",
-        { feedback, product_name: productName },
+        { feedback, product_name: resolvedName },
         { timeout: 90_000 }
       );
 

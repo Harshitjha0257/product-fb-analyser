@@ -88,7 +88,21 @@ async def analyse(request: FeedbackRequest):
                 raise HTTPException(status_code=422, detail=f"LLM returned invalid JSON: {raw[:200]}")
         # Use LLM-inferred name if user didn't provide one
         if not request.product_name:
-            result["product_name"] = result.get("product_name", "")
+            inferred = result.get("product_name", "").strip()
+            if not inferred:
+                # Regex fallback: scan first 600 chars for common header patterns
+                patterns = [
+                    r"—\s*([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)\s*$",
+                    r"(?:Reviews?|Tickets?|Feedback|Support)[^\n—]*—\s*([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)",
+                    r"^#+\s*([A-Z][a-zA-Z0-9.]+(?:\s[A-Z][a-zA-Z0-9.]+)?)\s+(?:Reviews?|Tickets?|Feedback|Support)",
+                ]
+                head = request.feedback[:600]
+                for pat in patterns:
+                    m = re.search(pat, head, re.MULTILINE | re.IGNORECASE)
+                    if m and m.group(1):
+                        inferred = m.group(1).strip()
+                        break
+            result["product_name"] = inferred
         else:
             result["product_name"] = request.product_name
         return result
