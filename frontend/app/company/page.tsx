@@ -124,7 +124,7 @@ export default function CompanyPage() {
         style={{ background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)", transform: "translate(30%,30%)" }} />
 
       {/* Header */}
-      <header className="relative z-10 w-full border-b border-white/5 px-8 py-4 flex items-center justify-between bg-black/80 backdrop-blur-sm">
+      <header className="relative z-20 w-full border-b border-white/5 px-8 py-4 flex items-center justify-between bg-black/80 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
             <span className="text-white text-xs font-black">CA</span>

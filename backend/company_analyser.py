@@ -73,7 +73,7 @@ def _parse(raw: str) -> dict:
     return {}
 
 
-def analyse_company(company_name: str, raw_data: str = None) -> dict:
+def analyse_company(company_name: str, raw_data: str = None) -> tuple:
     if raw_data and raw_data.strip():
         context = f"Data about {company_name}:\n{raw_data[:800]}"
         data_source = "user_provided"
@@ -91,16 +91,17 @@ def analyse_company(company_name: str, raw_data: str = None) -> dict:
                 temperature=0.3,
                 max_tokens=600,
             )
+            tokens = response.usage.total_tokens if response.usage else 0
             result = _parse(response.choices[0].message.content)
             result["company_name"] = company_name
             result["data_source"] = data_source
-            return result
+            return result, tokens
         except Exception as e:
             if "429" in str(e) and attempt < 2:
-                time.sleep(40)  # wait for TPM window to reset
+                time.sleep(40)
                 continue
             result = {"company_name": company_name, "data_source": data_source,
                       "verdict": "WATCH", "investment_score": 0, "moat_score": 0,
                       "market_timing_score": 0, "company_summary": f"Analysis failed: {str(e)[:100]}",
                       "error": str(e)[:200]}
-            return result
+            return result, 0

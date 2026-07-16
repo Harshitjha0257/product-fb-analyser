@@ -147,7 +147,7 @@ export default function FeedbackAnalyser() {
         style={{ background: "radial-gradient(circle, rgba(239,68,68,0.04) 0%, transparent 70%)", transform: "translate(30%, 30%)" }} />
 
       {/* Header */}
-      <header className="relative z-10 w-full border-b border-white/5 px-8 py-4 flex items-center justify-between bg-black/80 backdrop-blur-sm">
+      <header className="relative z-20 w-full border-b border-white/5 px-8 py-4 flex items-center justify-between bg-black/80 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="w-7 h-7 rounded-lg bg-red-500 flex items-center justify-center">

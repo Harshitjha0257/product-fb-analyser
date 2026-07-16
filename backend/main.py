@@ -68,6 +68,8 @@ async def analyse(request: FeedbackRequest):
             max_tokens=1500,
         )
 
+        if response.usage:
+            _add_tokens(response.usage.total_tokens)
         raw = response.choices[0].message.content.strip()
         # Strip markdown code fences if the model wraps output
         if raw.startswith("```"):
@@ -80,6 +82,7 @@ async def analyse(request: FeedbackRequest):
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="LLM returned invalid JSON")
     except Exception as e:
+        _parse_rate_limit_error(str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -102,8 +105,11 @@ async def chat(request: ChatRequest):
             temperature=0.4,
             max_tokens=400,
         )
+        if response.usage:
+            _add_tokens(response.usage.total_tokens)
         return {"reply": response.choices[0].message.content.strip()}
     except Exception as e:
+        _parse_rate_limit_error(str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -122,8 +128,13 @@ class CompanyChatRequest(BaseModel):
 
 _executor = ThreadPoolExecutor(max_workers=5)
 
-# Cache token usage from real API errors — no dedicated Groq call needed
 _token_cache: dict = {"limit": 500000, "used": 0, "remaining": 500000, "pct_used": 0.0, "reset": "", "rate_limited": False}
+
+def _add_tokens(n: int):
+    _token_cache["used"] = min(_token_cache["used"] + n, _token_cache["limit"])
+    _token_cache["remaining"] = max(0, _token_cache["limit"] - _token_cache["used"])
+    _token_cache["pct_used"] = round((_token_cache["used"] / _token_cache["limit"]) * 100, 1)
+    _token_cache["rate_limited"] = False
 
 def _parse_rate_limit_error(error_msg: str):
     m = re.search(r"Used (\d+).*?Limit (\d+).*?Please try again in (.+?)\.", str(error_msg))
@@ -150,14 +161,15 @@ async def analyse_company_endpoint(request: CompanyRequest):
                 loop.run_in_executor(_executor, analyse_company, name, request.raw_data)
                 for name in companies[:5]
             ]
-            results = list(await asyncio.gather(*tasks))
-            _token_cache.update({"rate_limited": False, "remaining": max(0, _token_cache["remaining"] - 5000)})
+            raw_results = list(await asyncio.gather(*tasks))
+            results = [r[0] for r in raw_results]
+            _add_tokens(sum(r[1] for r in raw_results))
             return {"mode": "compare", "companies": results}
         else:
-            result = await loop.run_in_executor(
+            result, tokens = await loop.run_in_executor(
                 _executor, analyse_company, request.company_name, request.raw_data
             )
-            _token_cache.update({"rate_limited": False, "remaining": max(0, _token_cache["remaining"] - 2000)})
+            _add_tokens(tokens)
             return {"mode": "single", **result}
     except Exception as e:
         _parse_rate_limit_error(str(e))
@@ -192,8 +204,11 @@ Answer questions about this company as a VC analyst. Be concise and direct — 2
             temperature=0.4,
             max_tokens=400,
         )
+        if response.usage:
+            _add_tokens(response.usage.total_tokens)
         return {"reply": response.choices[0].message.content.strip()}
     except Exception as e:
+        _parse_rate_limit_error(str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -236,8 +251,11 @@ Answer comparative questions with conviction. Be direct and concise — 2-3 sent
             temperature=0.4,
             max_tokens=400,
         )
+        if response.usage:
+            _add_tokens(response.usage.total_tokens)
         return {"reply": response.choices[0].message.content.strip()}
     except Exception as e:
+        _parse_rate_limit_error(str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
