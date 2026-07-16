@@ -129,7 +129,7 @@ Type any company name. The AI autonomously searches the live web — funding his
 | File | What it does |
 |---|---|
 | `main.py` | The entire API. All routes, CORS config, token cache, file extraction endpoint. Feedback is trimmed to 3,000 chars before LLM call. JSON mode enforced on all Groq calls. Token cache updated from `response.usage.total_tokens` after every successful call. |
-| `company_analyser.py` | Brain of the Company Analyser. `_research()` fires 5 Tavily searches. `analyse_company()` calls Groq with JSON mode. Returns `(result, tokens)` tuple so `main.py` can accumulate token counts from parallel analyses. |
+| `company_analyser.py` | Brain of the Company Analyser. `_research()` fires 5 Tavily searches. `analyse_company()` calls Groq with JSON mode (`max_tokens=750`). Returns `(result, tokens)` tuple so `main.py` can accumulate token counts from parallel analyses. LLM schema includes a `financials` object: `revenue`, `ebitda`, `market_cap`, `stock_trend`, `profitability`. |
 | `prompt.py` | Builds the structured prompt for the Feedback Analyser. When no product name is provided, instructs the LLM to infer it from the feedback and return it as `product_name` in the JSON. Also builds the chat system prompt. |
 | `rag.py` | BM25 keyword retrieval over VC framework documents. Returns top 2 most relevant chunks for a given query. |
 | `knowledge_base.py` | VC knowledge library — PMF theory, moat models, retention analysis, churn frameworks, investor scoring rubrics. |
@@ -149,8 +149,8 @@ Type any company name. The AI autonomously searches the live web — funding his
 | `app/feedback/page.tsx` | Feedback Analyser. Tab toggle between paste and file upload. `.txt` files read in-browser; `.pdf`/`.docx` sent to `/extract-text`. Product name auto-inferred from filename. Auto-retry with 55s countdown on network failure (Render cold start). Calls `/analyse`, stores result in `sessionStorage`, routes to `/result`. |
 | `app/result/page.tsx` | Feedback results. Radar chart, 5 score bars, bull/bear cases, risk flags, investment memo, AI analyst chat. **Verdict legend** (INVEST / WATCH / PASS with definitions) shown below the verdict banner, with the current result highlighted. |
 | `app/company/page.tsx` | Company Analyser input. Same cold-start auto-retry as feedback page. Multi-company compare mode via comma-separated names. |
-| `app/company/result/page.tsx` | Single-company result. INVEST/WATCH/PASS verdict, 3 scores, SWOT 2×2, competitive threat map, bull/bear, chat. |
-| `app/company/compare/page.tsx` | Multi-company comparison. Grouped bar chart, per-company score cards, SWOT sub-tabs, ranked verdict cards, shared AI analyst. |
+| `app/company/result/page.tsx` | Single-company result. **Verdict guide (INVEST/WATCH/PASS) at the very top.** Prominent **compare panel** below it — AI-suggested competitor chips (up to 4), custom text input, max-3 enforcement, progress indicator. Financial Signals section (Revenue, EBITDA, Profitability, Market Cap, Stock Trend) colour-coded green/red/neutral. Then: 3 score bars, SWOT 2×2, competitive threat map, bull/bear, key risks, due diligence questions, AI analyst chat. Export as JSON or CSV from the header. |
+| `app/company/compare/page.tsx` | Multi-company comparison. **Verdict Legend strip** just below the header. **Section 00 — Individual Analyses**: each company gets its own card with verdict badge, animated score bars in its own colour, financial signals, its own specific competitors (Apple's competitors ≠ Meta's competitors), and bull/bear cases. Then: Section 01 grouped bar chart + signal snapshot table + per-company score cards; Section 02 SWOT sub-tabs + competitive threat map; Section 03 ranked verdict cards + shared AI analyst chat. Add-more / max-reached panel at the bottom. Export JSON + CSV from the header. |
 
 #### Components (`/components`)
 
