@@ -27,7 +27,7 @@ DATA:
 {context}
 
 JSON schema (fill real values for {name}):
-{{"verdict":"INVEST","confidence":"High","investment_score":7,"moat_score":6,"market_timing_score":8,"growth_signal":"Accelerating","revenue_signal":"Strong","churn_risk":"Low","exit_potential":"Acquisition Target","funding_stage":"Series B","company_summary":"2 sentence overview.","swot":{{"strengths":["S1","S2"],"weaknesses":["W1"],"opportunities":["O1"],"threats":["T1"]}},"competitive_map":[{{"name":"CompA","positioning":"1 sentence.","threat_level":"High"}},{{"name":"CompB","positioning":"1 sentence.","threat_level":"Medium"}}],"bull_case":"1-2 sentence upside.","bear_case":"1-2 sentence downside.","investment_reasoning":"2 sentence thesis.","key_risks":["R1","R2"],"follow_up_questions":["Q1?","Q2?"]}}
+{{"verdict":"INVEST","confidence":"High","investment_score":7,"moat_score":6,"market_timing_score":8,"growth_signal":"Accelerating","revenue_signal":"Strong","churn_risk":"Low","exit_potential":"Acquisition Target","funding_stage":"Series B","company_summary":"2 sentence overview.","swot":{{"strengths":["S1","S2"],"weaknesses":["W1"],"opportunities":["O1"],"threats":["T1"]}},"competitive_map":[{{"name":"CompA","positioning":"1 sentence.","threat_level":"High"}},{{"name":"CompB","positioning":"1 sentence.","threat_level":"Medium"}}],"bull_case":"1-2 sentence upside.","bear_case":"1-2 sentence downside.","investment_reasoning":"2 sentence thesis.","key_risks":["R1","R2"],"follow_up_questions":["Q1?","Q2?"],"financials":{{"revenue":"e.g. $10B ARR or Unknown","ebitda":"Positive/Negative/Unknown","market_cap":"e.g. $2.5T or Unknown","stock_trend":"Bullish/Bearish/Neutral/Not-listed","profitability":"Profitable/Loss-making/Pre-revenue/Unknown"}}}}
 
 Rules: verdict must be INVEST(7-10), WATCH(4-6), or PASS(1-3). Be concise — short strings only.\
 """
@@ -89,7 +89,7 @@ def analyse_company(company_name: str, raw_data: str = None) -> tuple:
                 model="llama-3.1-8b-instant",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=600,
+                max_tokens=750,
                 response_format={"type": "json_object"},
             )
             tokens = response.usage.total_tokens if response.usage else 0

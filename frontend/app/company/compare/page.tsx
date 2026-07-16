@@ -212,6 +212,20 @@ function CompareChat({ companies }: { companies: any[] }) {
   );
 }
 
+function ScoreStrip({ label, score, color }: { label: string; score: number; color: string }) {
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">{label}</span>
+        <span className="text-sm font-black" style={{ color }}>{score}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
+      </div>
+      <div className="h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${score * 10}%`, backgroundColor: color }} />
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════════════════ */
@@ -317,6 +331,141 @@ export default function ComparePage() {
           </button>
         </div>
       </header>
+
+      {/* ── Verdict Legend ── */}
+      <div className="w-full bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-8 py-3">
+        <div className="flex items-center gap-6 flex-wrap">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Verdict Guide:</span>
+          {[
+            { v: "INVEST", r: "7–10", c: "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
+            { v: "WATCH",  r: "4–6",  c: "bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800" },
+            { v: "PASS",   r: "1–3",  c: "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800" },
+          ].map(({ v, r, c }) => (
+            <span key={v} className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${c}`}>{v} {r}/10</span>
+          ))}
+          <span className="text-[10px] text-gray-400 ml-auto">Each company is analysed independently</span>
+        </div>
+      </div>
+
+      {/* ── Individual Company Analyses ── */}
+      <section className="w-full bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-8">
+        <div className="flex items-center gap-4 mb-6">
+          <span className="text-5xl font-black text-gray-100 dark:text-gray-800 leading-none select-none">00</span>
+          <div>
+            <h2 className="text-xl font-black uppercase tracking-tight">Individual Analyses</h2>
+            <p className="text-sm text-gray-400 mt-0.5">Each company scored separately — scroll right for full details</p>
+          </div>
+        </div>
+
+        <div className={`grid gap-5 ${companies.length === 1 ? "grid-cols-1 max-w-lg" : companies.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+          {companies.map((c: any, i: number) => {
+            const color = colors[i];
+            const vCfg = {
+              INVEST: { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", text: "text-emerald-600 dark:text-emerald-400" },
+              WATCH:  { bg: "bg-yellow-50 dark:bg-yellow-950/30",  border: "border-yellow-200 dark:border-yellow-800",  text: "text-yellow-600 dark:text-yellow-400" },
+              PASS:   { bg: "bg-red-50 dark:bg-red-950/30",        border: "border-red-200 dark:border-red-800",        text: "text-red-600 dark:text-red-400" },
+            }[c.verdict as "INVEST" | "WATCH" | "PASS"] ?? { bg: "", border: "border-gray-200 dark:border-gray-700", text: "text-gray-500" };
+
+            return (
+              <div key={i} className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col">
+                {/* Company header */}
+                <div className="h-1" style={{ backgroundColor: color }} />
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black shrink-0" style={{ backgroundColor: color }}>
+                        {(c.company_name || "?")[0].toUpperCase()}
+                      </div>
+                      <p className="font-black text-sm text-gray-900 dark:text-white">{c.company_name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-black" style={{ color }}>{c.investment_score}</p>
+                      <p className="text-[10px] text-gray-400">/10</p>
+                    </div>
+                  </div>
+
+                  {/* Verdict badge */}
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border mb-3 ${vCfg.bg} ${vCfg.border}`}>
+                    <span className={`text-xs font-black ${vCfg.text}`}>{c.verdict}</span>
+                    <span className="text-[10px] text-gray-400">· {c.confidence} confidence</span>
+                  </div>
+
+                  {/* Score strips */}
+                  <div className="space-y-2.5 mb-4">
+                    <ScoreStrip label="Investment Score" score={c.investment_score ?? 0} color={color} />
+                    <ScoreStrip label="Moat Score" score={c.moat_score ?? 0} color={color} />
+                    <ScoreStrip label="Market Timing" score={c.market_timing_score ?? 0} color={color} />
+                  </div>
+
+                  {/* Summary */}
+                  {c.company_summary && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4 line-clamp-3">{c.company_summary}</p>
+                  )}
+
+                  {/* Financial signals */}
+                  {(c.financials || c.revenue_signal) && (
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {[
+                        { l: "Revenue", v: c.financials?.revenue || c.revenue_signal },
+                        { l: "EBITDA", v: c.financials?.ebitda },
+                        { l: "Market Cap", v: c.financials?.market_cap },
+                        { l: "Stock", v: c.financials?.stock_trend },
+                        { l: "Profitability", v: c.financials?.profitability || (c.revenue_signal === "Strong" ? "Profitable" : undefined) },
+                        { l: "Growth", v: c.growth_signal },
+                      ].filter(x => x.v && x.v !== "—" && x.v !== "Unknown").slice(0, 4).map(({ l, v }) => (
+                        <div key={l} className="bg-gray-50 dark:bg-gray-900 rounded-lg px-2.5 py-1.5">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{l}</p>
+                          <p className={`text-xs font-bold mt-0.5 ${
+                            ["Positive", "Profitable", "Bullish", "Strong", "Accelerating"].includes(v) ? "text-emerald-600 dark:text-emerald-400"
+                            : ["Negative", "Loss-making", "Bearish", "Weak", "Declining"].includes(v) ? "text-red-600 dark:text-red-400"
+                            : "text-gray-900 dark:text-white"
+                          }`}>{v}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Their specific competitors */}
+                  {c.competitive_map?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 mb-2">Key Competitors</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {c.competitive_map.slice(0, 4).map((comp: any) => (
+                          <span key={comp.name} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            comp.threat_level === "High" ? "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800"
+                            : comp.threat_level === "Medium" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800"
+                            : "bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700"
+                          }`}>
+                            {comp.name} · {comp.threat_level}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bull / Bear */}
+                  {(c.bull_case || c.bear_case) && (
+                    <div className="mt-4 space-y-2">
+                      {c.bull_case && (
+                        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 px-3 py-2">
+                          <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider mb-1">▲ Bull</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 leading-snug line-clamp-2">{c.bull_case}</p>
+                        </div>
+                      )}
+                      {c.bear_case && (
+                        <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 px-3 py-2">
+                          <p className="text-[9px] font-black uppercase text-red-600 dark:text-red-400 tracking-wider mb-1">▼ Bear</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 leading-snug line-clamp-2">{c.bear_case}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* ════════════════════════════════════════════════════════
           TILE 1 — PERFORMANCE ANALYSIS

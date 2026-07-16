@@ -151,6 +151,7 @@ export default function CompanyResultPage() {
   const router = useRouter();
   const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([]);
   const [exported, setExported] = useState(false);
+  const [compareInput, setCompareInput] = useState("");
 
   useEffect(() => {
     const raw = sessionStorage.getItem("company_result");
@@ -226,6 +227,14 @@ export default function CompanyResultPage() {
     a.download = `${(data.company_name || "company").replace(/\s+/g, "_")}_analysis.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleCompare = () => {
+    const custom = compareInput.trim() ? [compareInput.trim()] : [];
+    const all = [data.company_name, ...selectedCompetitors, ...custom].filter(Boolean);
+    const names = [...new Set(all)].slice(0, 3);
+    if (names.length < 2) return;
+    router.push(`/company?q=${encodeURIComponent(names.join(","))}`);
   };
 
   const companyChatPayload = (analysisData: any, msg: string, history: any[]) => ({
@@ -331,6 +340,81 @@ export default function CompanyResultPage() {
         <main className="flex-1 overflow-y-auto min-w-0">
           <div className="p-5 sm:p-6 space-y-6">
 
+            {/* Verdict Guide */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { v: "INVEST", r: "7–10", d: "Strong conviction — compelling opportunity", c: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300" },
+                { v: "WATCH",  r: "4–6",  d: "Monitor — needs more signal before committing", c: "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300" },
+                { v: "PASS",   r: "1–3",  d: "Weak fundamentals — not compelling now", c: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300" },
+              ].map(({ v, r, d, c }) => (
+                <div key={v} className={`rounded-xl border px-3 py-2 ${c} ${data.verdict === v ? "ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-950 " + (v === "INVEST" ? "ring-emerald-400" : v === "WATCH" ? "ring-yellow-400" : "ring-red-400") : "opacity-50"}`}>
+                  <p className="font-black text-sm">{v} <span className="font-mono text-[10px] opacity-70">{r}/10</span></p>
+                  <p className="text-[10px] leading-tight mt-0.5 opacity-80">{d}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* TOP COMPARE PANEL */}
+            {data.competitive_map?.length > 0 && (
+              <div className="rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center shrink-0">
+                    <span className="text-white text-base font-black">⊙</span>
+                  </div>
+                  <div>
+                    <p className="font-black text-sm text-gray-900 dark:text-white">Compare {data.company_name} with competitors</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">AI-identified competitors below — select up to 2, or type your own. Max 3 companies total.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {/* Current company locked */}
+                  <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-500 text-white">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/60" />{data.company_name}
+                  </span>
+                  {/* AI competitor chips */}
+                  {data.competitive_map.slice(0, 4).map((c: any) => {
+                    const sel = selectedCompetitors.includes(c.name);
+                    const atMax = selectedCompetitors.length >= 2 && !sel;
+                    return (
+                      <button key={c.name} disabled={atMax}
+                        onClick={() => setSelectedCompetitors(p => p.includes(c.name) ? p.filter(n => n !== c.name) : [...p, c.name])}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${sel ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900" : atMax ? "opacity-30 cursor-not-allowed bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400" : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:border-blue-400 hover:text-blue-600"}`}>
+                        {sel ? "✓ " : ""}{c.name}
+                        {c.threat_level && <span className={`ml-1 text-[9px] font-bold ${c.threat_level === "High" ? "text-red-400" : c.threat_level === "Medium" ? "text-amber-400" : "text-emerald-400"}`}>· {c.threat_level}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:border-blue-400"
+                    placeholder="Or type another company name..."
+                    value={compareInput}
+                    onChange={e => setCompareInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleCompare()}
+                  />
+                  <button
+                    onClick={handleCompare}
+                    disabled={selectedCompetitors.length === 0 && !compareInput.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black text-sm transition-all shrink-0"
+                  >
+                    Compare →
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="flex-1 flex gap-1">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i < selectedCompetitors.length + 1 ? "bg-blue-500" : "bg-gray-200 dark:bg-gray-700"}`} />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 shrink-0">{selectedCompetitors.length + 1}/3 companies selected{selectedCompetitors.length >= 2 ? " · max" : ""}</p>
+                </div>
+              </div>
+            )}
+
             {/* Verdict Banner */}
             <div className={`rounded-2xl overflow-hidden border ${vc.border}`}>
               <div className={`p-6 ${vc.headerBg}`}>
@@ -373,9 +457,35 @@ export default function CompanyResultPage() {
               </div>
             </section>
 
-            {/* 02 SWOT ANALYSIS */}
+            {/* FINANCIAL SIGNALS */}
+            {(data.financials || data.revenue_signal) && (
+              <section>
+                <SectionDivider num="02" title="Financial Signals" />
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {[
+                    { label: "Revenue", value: data.financials?.revenue || data.revenue_signal || "—", icon: "💰" },
+                    { label: "EBITDA", value: data.financials?.ebitda || "—", icon: "📊" },
+                    { label: "Profitability", value: data.financials?.profitability || "—", icon: "📈" },
+                    { label: "Market Cap", value: data.financials?.market_cap || "—", icon: "🏦" },
+                    { label: "Stock Trend", value: data.financials?.stock_trend || "—", icon: "📉" },
+                  ].map(({ label, value, icon }) => (
+                    <div key={label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col gap-1">
+                      <span className="text-lg">{icon}</span>
+                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">{label}</p>
+                      <p className={`text-sm font-bold leading-tight ${
+                        value === "Positive" || value === "Profitable" || value === "Bullish" || value === "Strong" ? "text-emerald-600 dark:text-emerald-400"
+                        : value === "Negative" || value === "Loss-making" || value === "Bearish" || value === "Weak" ? "text-red-600 dark:text-red-400"
+                        : "text-gray-900 dark:text-white"
+                      }`}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* 03 SWOT ANALYSIS */}
             <section>
-              <SectionDivider num="02" title="SWOT Analysis" />
+              <SectionDivider num="03" title="SWOT Analysis" />
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <SwotCell title="Strengths" items={data.swot?.strengths} accent="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500" />
                 <SwotCell title="Weaknesses" items={data.swot?.weaknesses} accent="text-red-600 dark:text-red-400" bg="bg-red-500" />
@@ -384,10 +494,10 @@ export default function CompanyResultPage() {
               </div>
             </section>
 
-            {/* 03 COMPETITIVE THREAT MAP */}
+            {/* 04 COMPETITIVE THREAT MAP */}
             {data.competitive_map?.length > 0 && (
               <section>
-                <SectionDivider num="03" title="Competitive Threat Map" />
+                <SectionDivider num="04" title="Competitive Threat Map" />
                 <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
                   <div className="grid grid-cols-[1fr_auto] text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800">
                     <span>Competitor · Positioning</span>
@@ -406,9 +516,9 @@ export default function CompanyResultPage() {
               </section>
             )}
 
-            {/* 04 INVESTMENT THESIS */}
+            {/* 05 INVESTMENT THESIS */}
             <section>
-              <SectionDivider num="04" title="Investment Thesis" />
+              <SectionDivider num="05" title="Investment Thesis" />
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-2xl overflow-hidden border border-emerald-200 dark:border-emerald-900/60 bg-white dark:bg-gray-900">
                   <div className="h-0.5 bg-gradient-to-r from-emerald-500 to-emerald-400" />
@@ -435,10 +545,10 @@ export default function CompanyResultPage() {
               </div>
             </section>
 
-            {/* 05 KEY RISKS */}
+            {/* 06 KEY RISKS */}
             {data.key_risks?.length > 0 && (
               <section>
-                <SectionDivider num="05" title="Key Risks" />
+                <SectionDivider num="06" title="Key Risks" />
                 <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
                   <ul className="space-y-3">
                     {data.key_risks.map((r: string, i: number) => (
@@ -454,10 +564,10 @@ export default function CompanyResultPage() {
               </section>
             )}
 
-            {/* 06 TAM SIGNAL */}
+            {/* 07 TAM SIGNAL */}
             {data.tam_signal && (
               <section>
-                <SectionDivider num="06" title="Market Opportunity" />
+                <SectionDivider num="07" title="Market Opportunity" />
                 <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
                   <p className="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-[0.2em] mb-2">TAM Signal</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{data.tam_signal}</p>
@@ -465,10 +575,10 @@ export default function CompanyResultPage() {
               </section>
             )}
 
-            {/* 07 DUE DILIGENCE */}
+            {/* 08 DUE DILIGENCE */}
             {data.follow_up_questions?.length > 0 && (
               <section>
-                <SectionDivider num="07" title="Due Diligence Questions" />
+                <SectionDivider num="08" title="Due Diligence Questions" />
                 <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
                   <p className="text-xs text-gray-500 italic mb-5">Questions a VC partner would demand answers to before signing a term sheet</p>
                   <ol className="space-y-4">
@@ -481,65 +591,6 @@ export default function CompanyResultPage() {
                       </li>
                     ))}
                   </ol>
-                </div>
-              </section>
-            )}
-
-            {/* 08 COMPARE WITH COMPETITORS */}
-            {data.competitive_map?.length > 0 && (
-              <section>
-                <SectionDivider num="08" title="Compare with Competitors" />
-                <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-                  <p className="text-xs text-gray-500 italic mb-4">
-                    Select competitors to run a side-by-side comparison. You are already included — up to 2 more (3 total).
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-5">
-                    {/* Current company — locked */}
-                    <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      {data.company_name}
-                      <span className="text-[10px] text-blue-400 font-normal">(you)</span>
-                    </span>
-                    {/* Competitor chips */}
-                    {data.competitive_map.map((c: any) => {
-                      const selected = selectedCompetitors.includes(c.name);
-                      const atMax = selectedCompetitors.length >= 2 && !selected;
-                      return (
-                        <button
-                          key={c.name}
-                          disabled={atMax}
-                          onClick={() => setSelectedCompetitors(prev =>
-                            prev.includes(c.name) ? prev.filter(n => n !== c.name) : [...prev, c.name]
-                          )}
-                          className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                            selected
-                              ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white"
-                              : atMax
-                              ? "bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed"
-                              : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-500"
-                          }`}
-                        >
-                          {selected ? "✓ " : ""}{c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-400">
-                      {selectedCompetitors.length + 1}/3 companies selected
-                      {selectedCompetitors.length >= 2 && <span className="text-amber-500 ml-1">· max reached</span>}
-                    </p>
-                    <button
-                      disabled={selectedCompetitors.length === 0}
-                      onClick={() => {
-                        const names = [data.company_name, ...selectedCompetitors].join(",");
-                        router.push(`/company?q=${encodeURIComponent(names)}`);
-                      }}
-                      className="flex items-center gap-2 text-sm font-black px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-all"
-                    >
-                      Compare Now →
-                    </button>
-                  </div>
                 </div>
               </section>
             )}
