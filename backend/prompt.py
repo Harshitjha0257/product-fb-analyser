@@ -9,6 +9,18 @@ def build_prompt(feedback: str, product_name: str = "", vc_context: str = "") ->
     return f"""You are a senior venture capital analyst at a top-tier firm (Sequoia, a16z, Benchmark). \
 Write a rigorous investment memo. Cite specific evidence from the feedback. Be opinionated and direct.
 
+SCORING RULES — follow these strictly. The verdict MUST match the investment_score range:
+- INVEST (score 7-10): Overwhelmingly positive signals. Clear PMF, low churn, strong retention, users actively praise the product and would miss it. Reserve for genuinely strong feedback only.
+- WATCH  (score 4-6): Mixed signals. Real strengths exist alongside real problems. Users find value but churn risk, performance issues, feature gaps, or support failures are present. THIS IS THE CORRECT VERDICT FOR MOST REAL-WORLD PRODUCTS that have a mix of positive and negative feedback.
+- PASS   (score 1-3): Overwhelmingly negative. Fundamental PMF failure, high churn, users are actively frustrated with no meaningful positive signal.
+
+Calibration examples:
+- Mostly praise, minor complaints → INVEST (7-8)
+- Equal praise and complaints → WATCH (5)
+- More complaints than praise but some value → WATCH (4)
+- Mostly complaints, few positives → PASS (2-3)
+- All complaints, no positives → PASS (1)
+
 {context_block}{product_line}USER FEEDBACK:
 \"\"\"
 {feedback}
@@ -17,8 +29,8 @@ Write a rigorous investment memo. Cite specific evidence from the feedback. Be o
 Return ONLY valid JSON — no markdown, no code fences, no extra text.
 
 {{
-  "verdict": "INVEST" or "PASS",
-  "investment_score": <integer 1-10>,
+  "verdict": "INVEST" or "WATCH" or "PASS",
+  "investment_score": <integer 1-10, must match: INVEST=7-10, WATCH=4-6, PASS=1-3>,
   "sentiment_score": <integer 1-10>,
   "pmf_score": <integer 1-10>,
   "confidence": "Low" or "Medium" or "High",
@@ -34,8 +46,8 @@ Return ONLY valid JSON — no markdown, no code fences, no extra text.
   "moat_signal": "<one sentence on defensibility and switching costs>",
   "tam_signal": "<one sentence on total addressable market>",
   "exit_potential": "IPO Candidate" or "Acquisition Target" or "PE Buyout" or "Early Stage",
-  "moat_score": <integer 1-10, how defensible is this product — switching costs, network effects, data moat>,
-  "retention_score": <integer 1-10, how likely are existing users to stay long-term based on feedback>,
+  "moat_score": <integer 1-10, how defensible is this product>,
+  "retention_score": <integer 1-10, how likely are existing users to stay long-term>,
   "investment_thesis": "<2-3 sentences: specific bull case grounded in the feedback evidence>",
   "bear_case": "<2-3 sentences: specific realistic downside scenario grounded in the feedback>",
   "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
