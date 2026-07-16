@@ -139,8 +139,15 @@ export default function FeedbackAnalyser() {
       const _id = Date.now().toString();
       sessionStorage.setItem("result", JSON.stringify({ ...res.data, _feedback: feedback, _id }));
       router.push("/result");
-    } catch {
-      // Auto-retry after 35s countdown (handles Render cold start)
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.detail;
+      if (serverMsg) {
+        // Backend is up but returned an error — no retry needed
+        setError(`Analysis error: ${serverMsg}`);
+        setLoading(false);
+        return;
+      }
+      // No response = network/timeout = Render cold start — auto-retry
       let secs = 55;
       setRetryCountdown(secs);
       setError("Backend is waking up — auto-retrying shortly...");
@@ -158,8 +165,9 @@ export default function FeedbackAnalyser() {
         const _id = Date.now().toString();
         sessionStorage.setItem("result", JSON.stringify({ ...res.data, _feedback: feedback, _id }));
         router.push("/result");
-      } catch {
-        setError("Analysis failed after retry. Backend may be down — please wait a minute and try again.");
+      } catch (err2: any) {
+        const msg2 = err2?.response?.data?.detail;
+        setError(msg2 ? `Analysis error: ${msg2}` : "Backend unavailable — please try again in a moment.");
       }
     } finally {
       setLoading(false);
