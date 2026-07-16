@@ -90,6 +90,7 @@ def analyse_company(company_name: str, raw_data: str = None) -> tuple:
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=600,
+                response_format={"type": "json_object"},
             )
             tokens = response.usage.total_tokens if response.usage else 0
             result = _parse(response.choices[0].message.content)
