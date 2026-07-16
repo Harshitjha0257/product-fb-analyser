@@ -71,16 +71,25 @@ async def analyse(request: FeedbackRequest):
         if response.usage:
             _add_tokens(response.usage.total_tokens)
         raw = response.choices[0].message.content.strip()
-        # Strip markdown code fences if the model wraps output
-        if raw.startswith("```"):
-            parts = raw.split("```")
-            raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
-        result = json.loads(raw)
+        raw = re.sub(r"^```json\s*", "", raw, flags=re.MULTILINE)
+        raw = re.sub(r"^```\s*", "", raw, flags=re.MULTILINE)
+        raw = re.sub(r"```\s*$", "", raw, flags=re.MULTILINE)
+        raw = raw.strip()
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            m = re.search(r"\{.*\}", raw, re.DOTALL)
+            if m:
+                result = json.loads(m.group())
+            else:
+                raise HTTPException(status_code=422, detail=f"LLM returned invalid JSON: {raw[:200]}")
         result["product_name"] = request.product_name or ""
         return result
 
+    except HTTPException:
+        raise
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="LLM returned invalid JSON")
+        raise HTTPException(status_code=422, detail="LLM returned invalid JSON")
     except Exception as e:
         _parse_rate_limit_error(str(e))
         raise HTTPException(status_code=500, detail=str(e))
