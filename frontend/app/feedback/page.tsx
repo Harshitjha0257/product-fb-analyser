@@ -53,7 +53,48 @@ export default function FeedbackAnalyser() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [tickers, setTickers] = useState<string[]>(FALLBACK_TICKERS);
+  const [inputTab, setInputTab] = useState<"paste" | "upload">("paste");
+  const [extracting, setExtracting] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [dragOver, setDragOver] = useState(false);
   const router = useRouter();
+
+  const handleFile = async (file: File) => {
+    if (!file) return;
+    const name = file.name.toLowerCase();
+    if (!name.endsWith(".txt") && !name.endsWith(".pdf") && !name.endsWith(".docx")) {
+      setError("Unsupported file. Please upload a .txt, .pdf, or .docx file.");
+      return;
+    }
+    setError("");
+    setExtracting(true);
+    setUploadedFileName(file.name);
+    try {
+      if (name.endsWith(".txt")) {
+        const text = await file.text();
+        setFeedback(text);
+        setInputTab("paste");
+      } else {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("https://product-fb-analyser.onrender.com/extract-text", {
+          method: "POST",
+          body: form,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "Extraction failed");
+        }
+        const data = await res.json();
+        setFeedback(data.text);
+        setInputTab("paste");
+      }
+    } catch (e: any) {
+      setError(e.message || "Failed to extract text from file.");
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -176,16 +217,70 @@ export default function FeedbackAnalyser() {
             </div>
 
             <div className="px-5 pt-4 pb-3">
-              <label className="text-[10px] font-black uppercase tracking-[0.25em] text-white/25 block mb-2">
-                User Feedback <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                className="w-full bg-transparent text-white text-sm placeholder:text-white/15 focus:outline-none resize-none leading-relaxed"
-                rows={7}
-                placeholder={"Paste raw user feedback here...\n\nApp store reviews · Survey responses · Support tickets\nNPS comments · G2 / Capterra reviews"}
-                value={feedback}
-                onChange={e => setFeedback(e.target.value)}
-              />
+              {/* Tab switcher */}
+              <div className="flex items-center gap-1 mb-3">
+                <button
+                  onClick={() => setInputTab("paste")}
+                  className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded transition-all ${
+                    inputTab === "paste"
+                      ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                      : "text-white/25 hover:text-white/40"
+                  }`}>
+                  📝 Paste Text
+                </button>
+                <button
+                  onClick={() => setInputTab("upload")}
+                  className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded transition-all ${
+                    inputTab === "upload"
+                      ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                      : "text-white/25 hover:text-white/40"
+                  }`}>
+                  📎 Upload File
+                </button>
+                {uploadedFileName && (
+                  <span className="ml-auto text-[10px] text-green-400 font-bold truncate max-w-[140px]">✓ {uploadedFileName}</span>
+                )}
+              </div>
+
+              {inputTab === "paste" ? (
+                <textarea
+                  className="w-full bg-transparent text-white text-sm placeholder:text-white/15 focus:outline-none resize-none leading-relaxed"
+                  rows={7}
+                  placeholder={"Paste raw user feedback here...\n\nApp store reviews · Survey responses · Support tickets\nNPS comments · G2 / Capterra reviews"}
+                  value={feedback}
+                  onChange={e => setFeedback(e.target.value)}
+                />
+              ) : (
+                <div
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+                  className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-all py-8 ${
+                    dragOver ? "border-red-500/60 bg-red-500/5" : "border-white/10 hover:border-white/20"
+                  }`}>
+                  {extracting ? (
+                    <>
+                      <span className="w-6 h-6 border-2 border-red-500/40 border-t-red-400 rounded-full animate-spin" />
+                      <p className="text-xs text-white/30">Extracting text from file...</p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-3xl opacity-40">📄</span>
+                      <p className="text-sm text-white/30 text-center">Drop your file here or</p>
+                      <label className="cursor-pointer px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-all">
+                        Browse File
+                        <input
+                          type="file"
+                          accept=".txt,.pdf,.docx"
+                          className="hidden"
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+                        />
+                      </label>
+                      <p className="text-[10px] text-white/20 uppercase tracking-widest">Supports .txt · .pdf · .docx</p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-5 pb-4 flex flex-wrap gap-1.5">

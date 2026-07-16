@@ -4,3 +4,6 @@ groq
 python-dotenv
 pydantic
 tavily-python
+pypdf
+python-docx
+python-multipart

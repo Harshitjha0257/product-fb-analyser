@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
@@ -9,6 +9,7 @@ from company_analyser import analyse_company
 import os
 import re
 import json
+import io
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, List
@@ -244,6 +245,33 @@ Answer comparative questions with conviction. Be direct and concise — 2-3 sent
 async def token_usage():
     # Returns cached data from real API calls — does NOT make a Groq request
     return _token_cache
+
+
+@app.post("/extract-text")
+async def extract_text(file: UploadFile = File(...)):
+    filename = (file.filename or "").lower()
+    content = await file.read()
+    try:
+        if filename.endswith(".txt"):
+            text = content.decode("utf-8", errors="ignore")
+        elif filename.endswith(".pdf"):
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(content))
+            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        elif filename.endswith(".docx"):
+            from docx import Document
+            doc = Document(io.BytesIO(content))
+            text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type. Use .txt, .pdf, or .docx")
+        text = text.strip()
+        if not text:
+            raise HTTPException(status_code=422, detail="No readable text found in the file.")
+        return {"text": text}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to extract text: {str(e)}")
 
 
 @app.get("/health")
