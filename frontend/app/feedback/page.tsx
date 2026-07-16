@@ -60,6 +60,13 @@ export default function FeedbackAnalyser() {
   const [retryCountdown, setRetryCountdown] = useState(0);
   const router = useRouter();
 
+  const extractNameFromFilename = (filename: string): string => {
+    const NOISE = new Set(["bad","negative","positive","good","reviews","review","feedback","sample","test","data","doc","file","support","tickets","ticket","comments","comment","survey","nps","qa","testing"]);
+    const base = filename.replace(/\.[^.]+$/, ""); // strip extension
+    const words = base.split(/[\s_\-]+/).filter(w => w.length > 1 && !NOISE.has(w.toLowerCase()));
+    return words.slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  };
+
   const handleFile = async (file: File) => {
     if (!file) return;
     const name = file.name.toLowerCase();
@@ -70,6 +77,11 @@ export default function FeedbackAnalyser() {
     setError("");
     setExtracting(true);
     setUploadedFileName(file.name);
+    // Auto-fill product name from filename if not already set
+    if (!productName.trim()) {
+      const inferred = extractNameFromFilename(file.name);
+      if (inferred) setProductName(inferred);
+    }
     try {
       if (name.endsWith(".txt")) {
         const text = await file.text();

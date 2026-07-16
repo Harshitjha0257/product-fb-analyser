@@ -1,5 +1,5 @@
 def build_prompt(feedback: str, product_name: str = "", vc_context: str = "") -> str:
-    product_line = f"Product Name: {product_name}\n" if product_name else ""
+    product_line = f"Product Name: {product_name}\n" if product_name else "Product Name: (not provided — infer it from the feedback and include it as the \"product_name\" field in your JSON)\n"
     context_block = (
         f"RELEVANT VC INVESTMENT FRAMEWORKS (use these to ground your analysis):\n{vc_context}\n\n"
         if vc_context

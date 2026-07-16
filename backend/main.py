@@ -86,7 +86,11 @@ async def analyse(request: FeedbackRequest):
                 result = json.loads(m.group())
             else:
                 raise HTTPException(status_code=422, detail=f"LLM returned invalid JSON: {raw[:200]}")
-        result["product_name"] = request.product_name or ""
+        # Use LLM-inferred name if user didn't provide one
+        if not request.product_name:
+            result["product_name"] = result.get("product_name", "")
+        else:
+            result["product_name"] = request.product_name
         return result
 
     except HTTPException:
