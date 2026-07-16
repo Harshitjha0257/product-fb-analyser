@@ -56,6 +56,7 @@ export default function CompanyPage() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [tickers, setTickers] = useState<string[]>(FALLBACK_TICKERS);
+  const [retryCountdown, setRetryCountdown] = useState(0);
   const router = useRouter();
 
   const isManualMode = rawData.trim().length > 0;
@@ -93,11 +94,16 @@ export default function CompanyPage() {
     const interval = !isManualMode
       ? setInterval(() => { ticker += 1; setStep(Math.min(ticker, STEPS.length - 1)); }, 3500)
       : null;
+
+    const attempt = () =>
+      axios.post(
+        "https://product-fb-analyser.onrender.com/analyse-company",
+        { company_name: companyName.trim(), raw_data: rawData.trim() || null },
+        { timeout: 90_000 }
+      );
+
     try {
-      const res = await axios.post("https://product-fb-analyser.onrender.com/analyse-company", {
-        company_name: companyName.trim(),
-        raw_data: rawData.trim() || null,
-      });
+      const res = await attempt();
       const _id = Date.now().toString();
       if (res.data.mode === "compare") {
         sessionStorage.setItem("compare_result", JSON.stringify({ ...res.data, _id }));
@@ -107,10 +113,43 @@ export default function CompanyPage() {
         router.push("/company/result");
       }
     } catch {
-      setError("Something went wrong. Is the backend running on port 8000?");
+      if (interval) clearInterval(interval);
+      // Auto-retry after 35s countdown (handles Render cold start)
+      let secs = 35;
+      setRetryCountdown(secs);
+      setError("Backend is waking up — auto-retrying shortly...");
+      await new Promise<void>(resolve => {
+        const iv = setInterval(() => {
+          secs--;
+          setRetryCountdown(secs);
+          if (secs <= 0) { clearInterval(iv); resolve(); }
+        }, 1000);
+      });
+      setError("");
+      setRetryCountdown(0);
+      let ticker2 = 0;
+      const interval2 = !isManualMode
+        ? setInterval(() => { ticker2 += 1; setStep(Math.min(ticker2, STEPS.length - 1)); }, 3500)
+        : null;
+      try {
+        const res = await attempt();
+        if (interval2) clearInterval(interval2);
+        const _id = Date.now().toString();
+        if (res.data.mode === "compare") {
+          sessionStorage.setItem("compare_result", JSON.stringify({ ...res.data, _id }));
+          router.push("/company/compare");
+        } else {
+          sessionStorage.setItem("company_result", JSON.stringify({ ...res.data, _id }));
+          router.push("/company/result");
+        }
+      } catch {
+        if (interval2) clearInterval(interval2);
+        setError("Analysis failed after retry. Backend may be down — please wait a minute and try again.");
+      }
     } finally {
       if (interval) clearInterval(interval);
       setLoading(false);
+      setRetryCountdown(0);
     }
   };
 
@@ -238,7 +277,12 @@ export default function CompanyPage() {
               )}
             </div>
 
-            {error && <p className="px-5 pb-3 text-red-400 text-xs">{error}</p>}
+            {error && (
+              <p className={`px-5 pb-3 text-xs flex items-center gap-2 ${retryCountdown > 0 ? "text-amber-400" : "text-red-400"}`}>
+                {retryCountdown > 0 && <span className="w-3 h-3 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />}
+                {error}
+              </p>
+            )}
 
             <button
               onClick={analyse}
@@ -249,7 +293,12 @@ export default function CompanyPage() {
                 borderTop: "1px solid rgba(59,130,246,0.15)",
               }}
             >
-              {loading ? (
+              {retryCountdown > 0 ? (
+                <span className="flex items-center justify-center gap-3">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Auto-retrying in {retryCountdown}s...
+                </span>
+              ) : loading ? (
                 <span className="flex flex-col items-center gap-2">
                   <span className="flex items-center gap-2.5">
                     <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />

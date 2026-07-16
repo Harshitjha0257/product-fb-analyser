@@ -57,6 +57,7 @@ export default function FeedbackAnalyser() {
   const [extracting, setExtracting] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(0);
   const router = useRouter();
 
   const handleFile = async (file: File) => {
@@ -122,18 +123,44 @@ export default function FeedbackAnalyser() {
     if (!feedback.trim()) return;
     setLoading(true);
     setError("");
+
+    const attempt = () =>
+      axios.post(
+        "https://product-fb-analyser.onrender.com/analyse",
+        { feedback, product_name: productName },
+        { timeout: 90_000 }
+      );
+
     try {
-      const res = await axios.post("https://product-fb-analyser.onrender.com/analyse", {
-        feedback,
-        product_name: productName,
-      });
+      const res = await attempt();
       const _id = Date.now().toString();
       sessionStorage.setItem("result", JSON.stringify({ ...res.data, _feedback: feedback, _id }));
       router.push("/result");
     } catch {
-      setError("Analysis failed. The backend may be warming up — please try again in 30 seconds.");
+      // Auto-retry after 35s countdown (handles Render cold start)
+      let secs = 35;
+      setRetryCountdown(secs);
+      setError("Backend is waking up — auto-retrying shortly...");
+      await new Promise<void>(resolve => {
+        const iv = setInterval(() => {
+          secs--;
+          setRetryCountdown(secs);
+          if (secs <= 0) { clearInterval(iv); resolve(); }
+        }, 1000);
+      });
+      setError("");
+      setRetryCountdown(0);
+      try {
+        const res = await attempt();
+        const _id = Date.now().toString();
+        sessionStorage.setItem("result", JSON.stringify({ ...res.data, _feedback: feedback, _id }));
+        router.push("/result");
+      } catch {
+        setError("Analysis failed after retry. Backend may be down — please wait a minute and try again.");
+      }
     } finally {
       setLoading(false);
+      setRetryCountdown(0);
     }
   };
 
@@ -289,7 +316,12 @@ export default function FeedbackAnalyser() {
               ))}
             </div>
 
-            {error && <p className="px-5 pb-3 text-red-400 text-xs">{error}</p>}
+            {error && (
+              <p className={`px-5 pb-3 text-xs flex items-center gap-2 ${retryCountdown > 0 ? "text-amber-400" : "text-red-400"}`}>
+                {retryCountdown > 0 && <span className="w-3 h-3 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />}
+                {error}
+              </p>
+            )}
 
             <button
               onClick={analyse}
@@ -300,7 +332,12 @@ export default function FeedbackAnalyser() {
                 borderTop: "1px solid rgba(239,68,68,0.15)",
               }}
             >
-              {loading ? (
+              {retryCountdown > 0 ? (
+                <span className="flex items-center justify-center gap-3">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Auto-retrying in {retryCountdown}s...
+                </span>
+              ) : loading ? (
                 <span className="flex items-center justify-center gap-3">
                   <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   Analysing feedback...
