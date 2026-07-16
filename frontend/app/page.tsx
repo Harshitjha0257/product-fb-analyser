@@ -13,6 +13,9 @@ export default function Home() {
   const [tickers, setTickers] = useState<string[]>(FALLBACK_TICKERS);
 
   useEffect(() => {
+    // Pre-warm Render backend on landing so it's awake before user navigates to a tool
+    fetch("https://product-fb-analyser.onrender.com/health").catch(() => {});
+
     try {
       const fb: any[] = JSON.parse(localStorage.getItem("fb_history") || "[]");
       const ca: any[] = JSON.parse(localStorage.getItem("company_history") || "[]");

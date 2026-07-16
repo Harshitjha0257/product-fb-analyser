@@ -98,6 +98,9 @@ export default function FeedbackAnalyser() {
   };
 
   useEffect(() => {
+    // Pre-warm Render backend on page load so it's awake by the time user submits
+    fetch("https://product-fb-analyser.onrender.com/health").catch(() => {});
+
     try {
       const h: HistoryEntry[] = JSON.parse(localStorage.getItem("fb_history") || "[]");
       setHistory(h);
@@ -138,7 +141,7 @@ export default function FeedbackAnalyser() {
       router.push("/result");
     } catch {
       // Auto-retry after 35s countdown (handles Render cold start)
-      let secs = 35;
+      let secs = 55;
       setRetryCountdown(secs);
       setError("Backend is waking up — auto-retrying shortly...");
       await new Promise<void>(resolve => {
