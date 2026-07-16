@@ -135,10 +135,14 @@ export default function CompanyPage() {
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push("/")}
+          <a href="/feedback"
             className="text-xs text-white/30 hover:text-white/60 transition-colors">
             ← Feedback Analyser
-          </button>
+          </a>
+          <a href="/"
+            className="text-xs text-white/20 hover:text-white/50 transition-colors">
+            Home
+          </a>
           <TokenBar />
           <ThemeToggle />
         </div>

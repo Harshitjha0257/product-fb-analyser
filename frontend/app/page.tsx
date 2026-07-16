@@ -1,126 +1,51 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import axios from "axios";
 import ThemeToggle from "@/components/ThemeToggle";
 import TokenBar from "@/components/TokenBar";
-
-type HistoryEntry = {
-  id: string;
-  productName: string;
-  verdict: string;
-  investmentScore: number;
-  timestamp: string;
-  data: any;
-};
-
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
-const verdictColor = (v: string) =>
-  v === "INVEST" ? "#ef4444" : v === "WATCH" ? "#f97316" : "#6b7280";
-
-const SCORES = [
-  { label: "Investment Score", score: 8.4, color: "#ef4444" },
-  { label: "PMF Score",        score: 7.1, color: "#f97316" },
-  { label: "Moat Score",       score: 6.8, color: "#a855f7" },
-  { label: "Sentiment Score",  score: 9.1, color: "#3b82f6" },
-  { label: "Retention Score",  score: 7.6, color: "#06b6d4" },
-];
-
-const OUTPUTS = [
-  "Investment Score", "PMF Score", "Moat Score",
-  "Sentiment Score", "Retention Score",
-  "Bull & Bear Case", "Risk Analysis", "Exit Potential",
-  "AI Analyst Chat", "TAM Signal",
-];
 
 const FALLBACK_TICKERS = [
   "INVEST · Notion · 8.4/10", "WATCH · Figma · 6.2/10", "PASS · Clubhouse · 2.1/10",
   "INVEST · Linear · 9.1/10", "WATCH · Superhuman · 5.8/10", "INVEST · Stripe · 8.9/10",
+  "INVEST · Apple · 9.1/10", "WATCH · Meta · 6.4/10",
 ];
 
 export default function Home() {
-  const [productName, setProductName] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [tickers, setTickers] = useState<string[]>(FALLBACK_TICKERS);
-  const router = useRouter();
 
   useEffect(() => {
     try {
-      const h: HistoryEntry[] = JSON.parse(localStorage.getItem("fb_history") || "[]");
-      setHistory(h);
-      if (h.length > 0) {
-        const live = h.map(e => `${e.verdict} · ${e.productName} · ${e.investmentScore}/10`);
-        setTickers(live.length >= 3 ? live : [...live, ...FALLBACK_TICKERS].slice(0, 8));
-      }
+      const fb: any[] = JSON.parse(localStorage.getItem("fb_history") || "[]");
+      const ca: any[] = JSON.parse(localStorage.getItem("company_history") || "[]");
+      const all = [
+        ...fb.map(e => `${e.verdict} · ${e.productName} · ${e.investmentScore}/10`),
+        ...ca.map(e => `${e.verdict} · ${e.companyName} · ${e.investmentScore}/10`),
+      ].filter(Boolean);
+      if (all.length >= 3) setTickers(all);
     } catch {}
   }, []);
-
-  const deleteEntry = (id: string) => {
-    const updated = history.filter(e => e.id !== id);
-    setHistory(updated);
-    localStorage.setItem("fb_history", JSON.stringify(updated));
-  };
-
-  const loadEntry = (entry: HistoryEntry) => {
-    sessionStorage.setItem("result", JSON.stringify({ ...entry.data, _id: entry.id }));
-    router.push("/result");
-  };
-
-  const analyse = async () => {
-    if (!feedback.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const res = await axios.post("https://product-fb-analyser.onrender.com/analyse", {
-        feedback,
-        product_name: productName,
-      });
-      const _id = Date.now().toString();
-      sessionStorage.setItem("result", JSON.stringify({ ...res.data, _feedback: feedback, _id }));
-      router.push("/result");
-    } catch {
-      setError("Something went wrong. Is the backend running on port 8000?");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col bg-red-grid">
 
-      {/* Ambient glow */}
-      <div className="fixed top-0 left-0 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(239,68,68,0.07) 0%, transparent 70%)", transform: "translate(-30%, -30%)" }} />
-      <div className="fixed bottom-0 right-0 w-[400px] h-[400px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(239,68,68,0.04) 0%, transparent 70%)", transform: "translate(30%, 30%)" }} />
+      {/* Ambient glows */}
+      <div className="fixed top-0 left-0 w-[700px] h-[700px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(239,68,68,0.06) 0%, transparent 70%)", transform: "translate(-30%,-30%)" }} />
+      <div className="fixed bottom-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)", transform: "translate(30%,30%)" }} />
 
       {/* Header */}
       <header className="relative z-10 w-full border-b border-white/5 px-8 py-4 flex items-center justify-between bg-black/80 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-7 h-7 rounded-lg bg-red-500 flex items-center justify-center">
-            <span className="text-white text-xs font-black">FA</span>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
+            <span className="text-white text-xs font-black">PA</span>
           </div>
-          <span className="text-sm font-black tracking-tight">FeedbackAnalyser</span>
+          <span className="text-sm font-black tracking-tight">Product Analyser</span>
           <span className="text-[10px] text-red-400 border border-red-500/30 rounded px-2 py-0.5 font-bold uppercase tracking-widest hidden md:block">
-            Investor Lens
+            Investment Intelligence
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <a href="/company"
-            className="text-xs font-bold text-blue-400 hover:text-blue-300 border border-blue-500/30 hover:border-blue-400/60 rounded-lg px-3 py-1.5 transition-all">
-            Company Analyser →
-          </a>
           <TokenBar />
           <ThemeToggle />
         </div>
@@ -137,187 +62,103 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main 2-column */}
-      <main className="relative z-10 flex-1 grid grid-cols-1 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_480px]">
+      {/* Main */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-16">
 
-        {/* LEFT — Form */}
-        <div className="flex flex-col justify-center px-8 lg:px-16 py-12 border-r border-white/5">
+        {/* Tags */}
+        <div className="flex flex-wrap gap-2 mb-8 justify-center animate-fade-up">
+          {["Groq · LLM", "Tavily · Web Research", "RAG · VC Frameworks", "Investment Grade"].map(tag => (
+            <span key={tag} className="text-[10px] font-bold text-white/30 border border-white/8 rounded-full px-3 py-1 uppercase tracking-widest">{tag}</span>
+          ))}
+        </div>
 
-          <div className="flex flex-wrap gap-2 mb-7 animate-fade-up">
-            {["Groq", "llama-3.1-8b", "RAG-Augmented", "VC-Grade"].map(tag => (
-              <span key={tag} className="text-[10px] font-bold text-white/30 border border-white/8 rounded-full px-2.5 py-1 uppercase tracking-widest">{tag}</span>
-            ))}
-          </div>
+        {/* Headline */}
+        <h1 className="text-5xl xl:text-7xl font-black tracking-tight text-center leading-[1.02] mb-4 animate-fade-up delay-100">
+          Investment-Grade<br /><span style={{ color: "#ef4444" }}>AI Analysis.</span>
+        </h1>
+        <p className="text-white/35 text-base text-center max-w-xl mb-14 animate-fade-up delay-200">
+          Choose a tool below — paste user feedback or type a company name. Get a full investment brief powered by autonomous AI research.
+        </p>
 
-          <h1 className="text-5xl xl:text-6xl 2xl:text-7xl font-black tracking-tight leading-[1.02] mb-5 animate-fade-up delay-100">
-            Turn Feedback Into<br />
-            <span style={{ color: "#ef4444" }}>Investment</span><br />
-            Analysis.
-          </h1>
+        {/* Tool cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl animate-fade-up delay-300">
 
-          <p className="text-white/35 text-base leading-relaxed mb-8 max-w-lg animate-fade-up delay-200">
-            Paste raw user feedback — reviews, NPS, support tickets. Get a full scored analysis with bull &amp; bear case, risk flags, radar chart, and an AI analyst to interrogate.
-          </p>
-
-          {/* Form card */}
-          <div className="animate-fade-up delay-300 border border-white/10 rounded-2xl overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.02)", boxShadow: "0 0 0 1px rgba(239,68,68,0.1), 0 0 40px rgba(239,68,68,0.05)" }}>
-
-            <div className="px-5 pt-5 pb-4 border-b border-white/5">
-              <label className="text-[10px] font-black uppercase tracking-[0.25em] text-white/25 block mb-2">Product Name</label>
-              <input
-                className="w-full bg-transparent text-white text-sm placeholder:text-white/15 focus:outline-none"
-                placeholder="e.g. Linear, Notion, Figma..."
-                value={productName}
-                onChange={e => setProductName(e.target.value)}
-              />
-            </div>
-
-            <div className="px-5 pt-4 pb-3">
-              <label className="text-[10px] font-black uppercase tracking-[0.25em] text-white/25 block mb-2">
-                User Feedback <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                className="w-full bg-transparent text-white text-sm placeholder:text-white/15 focus:outline-none resize-none leading-relaxed"
-                rows={7}
-                placeholder={"Paste raw user feedback here...\n\nApp store reviews · Survey responses · Support tickets\nNPS comments · G2 / Capterra reviews"}
-                value={feedback}
-                onChange={e => setFeedback(e.target.value)}
-              />
-            </div>
-
-            <div className="px-5 pb-4 flex flex-wrap gap-1.5">
-              {OUTPUTS.map(o => (
-                <span key={o} className="text-[10px] text-white/20 border border-white/5 rounded-full px-2 py-0.5">{o}</span>
-              ))}
-            </div>
-
-            {error && <p className="px-5 pb-3 text-red-400 text-xs">{error}</p>}
-
-            <button
-              onClick={analyse}
-              disabled={loading || !feedback.trim()}
-              className="w-full py-4 font-black text-sm tracking-[0.12em] uppercase transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                borderTop: "1px solid rgba(239,68,68,0.15)",
-              }}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-3">
-                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Analysing feedback...
-                </span>
-              ) : "Generate Investment Analysis →"}
-            </button>
-          </div>
-
-          {/* Switch to Company */}
-          <a href="/company"
-            className="mt-4 flex items-center gap-4 border border-white/5 rounded-2xl p-4 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group animate-fade-up delay-400">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-              <span className="text-blue-400 text-base">⊙</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-black">Company Analyser</p>
-                <span className="text-[9px] font-bold text-blue-400 border border-blue-500/30 rounded px-1.5 py-0.5 uppercase tracking-wider">New</span>
+          {/* Feedback Analyser */}
+          <a href="/feedback" className="group relative flex flex-col rounded-2xl overflow-hidden border border-white/10 hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.02)", boxShadow: "0 0 0 1px rgba(239,68,68,0.08)" }}>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+              style={{ background: "radial-gradient(circle at 30% 20%, rgba(239,68,68,0.1) 0%, transparent 60%)" }} />
+            <div className="p-8 flex flex-col flex-1 relative">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-11 h-11 rounded-xl bg-red-500 flex items-center justify-center shrink-0">
+                  <span className="text-white text-sm font-black">FA</span>
+                </div>
+                <div>
+                  <p className="font-black text-lg">Feedback Analyser</p>
+                  <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest">VC Investor Lens</p>
+                </div>
               </div>
-              <p className="text-xs text-white/25 mt-0.5">Type a company → AI researches everything automatically</p>
-            </div>
-            <span className="text-blue-400 text-sm group-hover:translate-x-1 transition-transform">→</span>
-          </a>
 
-          {/* History */}
-          {history.length > 0 && (
-            <div className="mt-6 animate-fade-up delay-500">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/20 mb-3">Recent Analyses</p>
-              <div className="space-y-2">
-                {history.slice(0, 6).map(entry => (
-                  <div key={entry.id}
-                    className="flex items-center gap-3 border border-white/5 rounded-xl px-4 py-2.5 hover:border-white/10 transition-all group"
-                    style={{ background: "rgba(255,255,255,0.01)" }}>
-                    <button onClick={() => loadEntry(entry)} className="flex-1 flex items-center gap-3 text-left min-w-0">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: verdictColor(entry.verdict) }} />
-                      <span className="text-sm font-bold text-white/70 truncate">{entry.productName}</span>
-                      <span className="text-xs font-black shrink-0" style={{ color: verdictColor(entry.verdict) }}>{entry.verdict}</span>
-                      <span className="text-xs font-black text-white/40 shrink-0">{entry.investmentScore}/10</span>
-                      <span className="text-[10px] text-white/20 shrink-0 ml-auto">{timeAgo(entry.timestamp)}</span>
-                    </button>
-                    <button
-                      onClick={() => deleteEntry(entry.id)}
-                      className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
-                      title="Delete">
-                      ×
-                    </button>
+              <p className="text-white/40 text-sm leading-relaxed mb-6">
+                Paste raw user feedback — reviews, NPS, support tickets. Get a full scored investment analysis with bull &amp; bear case, risk flags, and radar chart.
+              </p>
+
+              <div className="space-y-2.5 mb-8 flex-1">
+                {["5 scored investment dimensions", "Bull & Bear case generation", "RAG-augmented VC frameworks", "AI analyst chat"].map(f => (
+                  <div key={f} className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                    <span className="text-xs text-white/35">{f}</span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
 
-        {/* RIGHT — Live Preview */}
-        <div className="preview-panel hidden lg:flex flex-col border-l border-white/5" style={{ background: "rgba(0,0,0,0.5)" }}>
-
-          <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2.5">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Sample Analysis Preview</span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-
-            <div className="animate-fade-up flex items-center gap-3">
-              <div className="px-3 py-1.5 rounded-lg font-black text-sm tracking-wider"
-                style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
-                INVEST
+              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                <span className="text-xs text-white/20">Paste feedback → instant analysis</span>
+                <span className="text-red-400 font-black group-hover:translate-x-1 transition-transform">→</span>
               </div>
-              <span className="text-white/25 text-xs">Confidence: High · 8.4/10</span>
             </div>
+          </a>
 
-            <div className="border border-white/5 rounded-xl p-4 space-y-3 animate-fade-up delay-100"
-              style={{ background: "rgba(255,255,255,0.015)" }}>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/25 mb-3">Performance Scorecard</p>
-              {SCORES.map((s, i) => (
-                <div key={s.label}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-xs text-white/40 font-semibold">{s.label}</span>
-                    <span className="text-xs font-black" style={{ color: s.color }}>{s.score}</span>
-                  </div>
-                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${s.score * 10}%`, backgroundColor: s.color, opacity: 0.8 }} />
-                  </div>
+          {/* Company Analyser */}
+          <a href="/company" className="group relative flex flex-col rounded-2xl overflow-hidden border border-white/10 hover:border-blue-500/40 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.02)", boxShadow: "0 0 0 1px rgba(59,130,246,0.08)" }}>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+              style={{ background: "radial-gradient(circle at 70% 20%, rgba(59,130,246,0.1) 0%, transparent 60%)" }} />
+            <div className="p-8 flex flex-col flex-1 relative">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-11 h-11 rounded-xl bg-blue-500 flex items-center justify-center shrink-0">
+                  <span className="text-white text-sm font-black">CA</span>
                 </div>
-              ))}
-            </div>
-
-            <div className="border border-white/5 rounded-xl p-4 animate-fade-up delay-200" style={{ background: "rgba(255,255,255,0.015)" }}>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(52,211,153,0.5)" }}>▲ Bull Case</p>
-              <p className="text-xs text-white/30 leading-relaxed">Strong PMF signals with high NPS and low churn. Users describe the product as "irreplaceable" — a hallmark of deep habit formation.</p>
-            </div>
-
-            <div className="border border-white/5 rounded-xl p-4 animate-fade-up delay-300" style={{ background: "rgba(255,255,255,0.015)" }}>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(239,68,68,0.5)" }}>▼ Bear Case</p>
-              <p className="text-xs text-white/30 leading-relaxed">Enterprise readiness concerns persist. Multiple mentions of missing audit logs and SSO. Risk of stalling in mid-market.</p>
-            </div>
-
-            <div className="border border-white/5 rounded-xl p-4 animate-fade-up delay-400" style={{ background: "rgba(255,255,255,0.015)" }}>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/25 mb-3">Key Risks</p>
-              {["Enterprise compliance gap", "Competitor feature parity", "Pricing sensitivity at scale"].map((r) => (
-                <div key={r} className="flex items-start gap-2 mb-1.5 last:mb-0">
-                  <span className="text-red-500 text-xs">×</span>
-                  <span className="text-xs text-white/30">{r}</span>
+                <div>
+                  <p className="font-black text-lg">Company Analyser</p>
+                  <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Autonomous Research</p>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <p className="text-center text-[9px] text-white/8 uppercase tracking-[0.3em] pb-1">Sample · Not real data</p>
-          </div>
+              <p className="text-white/40 text-sm leading-relaxed mb-6">
+                Type any company name. AI autonomously fetches funding history, reviews, competitors, and market signals — no data pasting required.
+              </p>
+
+              <div className="space-y-2.5 mb-8 flex-1">
+                {["Autonomous Tavily web research", "SWOT & competitive threat map", "Multi-company comparison", "AI analyst chat"].map(f => (
+                  <div key={f} className="flex items-center gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                    <span className="text-xs text-white/35">{f}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                <span className="text-xs text-white/20">Type a name → AI researches everything</span>
+                <span className="text-blue-400 font-black group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+          </a>
         </div>
       </main>
 
       <footer className="relative z-10 border-t border-white/5 px-8 py-3 flex items-center justify-between">
-        <p className="text-[10px] text-white/15 uppercase tracking-[0.25em]">Powered by Groq · llama-3.1-8b-instant · RAG · Tavily</p>
+        <p className="text-[10px] text-white/15 uppercase tracking-[0.25em]">Powered by Groq · llama-3.1-8b-instant · Tavily · RAG</p>
         <p className="text-[10px] text-white/8">Investment-grade AI analysis</p>
       </footer>
     </div>
