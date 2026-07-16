@@ -1,16 +1,20 @@
-# FB Analyser — Investment-Grade AI Analysis Platform
+# Product Analyser — Investment-Grade AI Analysis Platform
 
-Two tools, one repo. Paste user feedback **or** type a company name — get a full investment-grade brief in seconds, powered by autonomous AI research.
+Two tools, one repo. Paste user feedback or upload a document, **or** type a company name — get a full investment-grade brief in seconds, powered by autonomous AI research.
+
+**Live:** [product-fb-analyser.vercel.app](https://product-fb-analyser.vercel.app)
 
 ---
 
 ## What Is This?
 
-**Tool 1 — Feedback Analyser**
-Paste raw user feedback (reviews, NPS comments, support tickets). The AI scores the product across 5 investment dimensions, generates a bull & bear case, flags risks, and lets you chat with an AI analyst about the results. Uses a red/black dashboard UI with a live preview panel showing a sample analysis.
+A landing page at `/` lets users choose between two tools:
 
-**Tool 2 — Company Analyser**
-Type any company name. The AI autonomously searches the web — funding history, customer reviews, competitors, market signals — and generates a full investment brief without you pasting a single thing. Supports multi-company comparison (comma-separated names) with a side-by-side 3-tile dashboard. Includes a live Groq token usage bar in the header.
+**Tool 1 — Feedback Analyser** (`/feedback`)
+Paste raw user feedback (reviews, NPS comments, support tickets) or upload a `.txt`, `.pdf`, or `.docx` file. The AI scores the product across 5 investment dimensions, generates a bull & bear case, flags risks, draws a radar chart, and lets you chat with an AI analyst about the results. Product name is auto-inferred from the uploaded filename or from the feedback content if left blank.
+
+**Tool 2 — Company Analyser** (`/company`)
+Type any company name. The AI autonomously searches the live web — funding history, customer reviews, competitors, market signals — and generates a full investment brief without you pasting a single thing. Supports multi-company comparison (comma-separated names) with a side-by-side dashboard. Live Groq token bar in the header.
 
 ---
 
@@ -20,16 +24,16 @@ Type any company name. The AI autonomously searches the web — funding history,
 ┌─────────────────────────────────────────────────────────────────┐
 │                        BROWSER (Next.js)                        │
 │                                                                 │
-│  ┌─────────────────────┐     ┌─────────────────────────────┐   │
-│  │  Feedback Analyser  │     │     Company Analyser         │   │
-│  │  /  →  /result      │     │  /company  →  /company/result│   │
-│  │                     │     │  /company/compare            │   │
-│  └──────────┬──────────┘     └──────────────┬──────────────┘   │
+│  /  (landing — tool picker)                                     │
+│  ├─ /feedback   → /result          Feedback Analyser            │
+│  └─ /company    → /company/result  Company Analyser             │
+│                   /company/compare (multi-company)              │
 │                                                                 │
-│  SplashScreen (3D intro animation, once per session)            │
-└─────────────┼────────────────────────────────┼─────────────────┘
-              │ HTTP POST (axios)              │ HTTP POST (axios)
-              ▼                                ▼
+│  SplashScreen ("Product Analyser", ~4 sec, once per session)    │
+│  TokenBar (polls /token-usage every 60s, pre-warms /health)     │
+└─────────────────────────────────────────────────────────────────┘
+              │ HTTP POST (axios, 90s timeout)
+              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                   FastAPI Backend (Python)                       │
 │                                                                 │
@@ -38,14 +42,15 @@ Type any company name. The AI autonomously searches the web — funding history,
 │  POST /analyse-company  → research + score a company via Groq   │
 │  POST /company-chat     → AI analyst chat for single company    │
 │  POST /compare-chat     → AI analyst chat across N companies    │
+│  POST /extract-text     → extract text from .pdf/.docx uploads  │
 │  GET  /token-usage      → cached token quota (no Groq call)     │
-│  GET  /health           → health check                          │
+│  GET  /health           → health check (used for pre-warming)   │
 │                                                                 │
 │  ┌──────────────────┐   ┌────────────────────────────────────┐  │
 │  │     rag.py       │   │        company_analyser.py         │  │
 │  │  BM25 keyword    │   │  _research()  → 5 Tavily searches  │  │
 │  │  retrieval over  │   │  analyse_company() → Groq LLM      │  │
-│  │  VC frameworks   │   │  _parse()     → JSON extraction    │  │
+│  │  VC frameworks   │   │  response_format: json_object      │  │
 │  └──────────────────┘   └────────────────────────────────────┘  │
 └──────────────┬───────────────────────────────┬──────────────────┘
                │                               │
@@ -66,9 +71,13 @@ Type any company name. The AI autonomously searches the web — funding history,
 
 **Why Groq over OpenAI/Anthropic?** Groq runs on custom LPU (Language Processing Unit) hardware, making it 10–20× faster than GPU-based inference. For a tool where users are waiting for analysis, speed is critical.
 
-**Model choice — why `llama-3.1-8b-instant`?** The 8b-instant model gives **500,000 tokens/day** on Groq's free tier vs 100,000 for the 70b model. For structured JSON output (which this app uses), the 8b model performs nearly identically to the 70b at a fraction of the quota cost. The token bar in the UI shows live usage.
+**Model choice — why `llama-3.1-8b-instant`?** The 8b-instant model gives **500,000 tokens/day** on Groq's free tier vs 100,000 for the 70b model. For structured JSON output (which this app uses), the 8b model performs nearly identically to the 70b at a fraction of the quota cost.
 
-**Token usage design:** The `/token-usage` endpoint returns a cached dict — it does **not** make a Groq API call on every request. The cache is updated automatically whenever a real 429 rate-limit error occurs, so checking quota never burns your daily quota.
+**JSON mode:** All Groq calls use `response_format={"type": "json_object"}`, which forces the model to output valid JSON at the API level — no markdown fences, no prose, no parsing failures.
+
+**Token tracking:** Every successful Groq response reads `response.usage.total_tokens` and updates a shared `_token_cache` in memory. The `/token-usage` endpoint returns this cache — it never makes a Groq call just to check quota. The TokenBar in the header shows live usage and polls every 60 seconds.
+
+**TPM limit:** Groq's free tier allows 6,000 tokens per minute (input + output). Feedback is trimmed to 3,000 characters and RAG context is capped at 2 results before sending to the LLM, keeping total prompt + output well under the limit.
 
 ---
 
@@ -92,9 +101,10 @@ Type any company name. The AI autonomously searches the web — funding history,
 | **Next.js 14** (App Router) | Page routing, server/client component split |
 | **TypeScript** | Type safety across all components |
 | **Tailwind CSS v3** | Utility-first styling with custom animations in `globals.css` |
-| **axios** | HTTP calls to FastAPI backend |
+| **axios** | HTTP calls to FastAPI backend (90s timeout, auto-retry on network failure) |
 | **Custom SVG components** | Radar chart, grouped bar chart, investment gauge — no charting library |
 | **sessionStorage** | Pass analysis results between pages without a database |
+| **localStorage** | Persist analysis history per tool (up to 20 entries each) |
 | **CSS keyframe animations** | `fade-up`, `ticker`, `scan`, `pulse-red` — defined in `globals.css` |
 
 ### Backend — FastAPI
@@ -102,10 +112,13 @@ Type any company name. The AI autonomously searches the web — funding history,
 |---|---|
 | **FastAPI** | HTTP API framework, async request handling |
 | **Pydantic** | Request/response validation and schema enforcement |
-| **Groq Python SDK** | LLM completions (`llama-3.1-8b-instant`) |
+| **Groq Python SDK** | LLM completions (`llama-3.1-8b-instant`) with JSON mode |
 | **tavily-python** | Autonomous web research for company analysis |
+| **pypdf** | Extract text from uploaded PDF files |
+| **python-docx** | Extract text from uploaded Word (.docx) files |
+| **python-multipart** | Handle `multipart/form-data` file uploads in FastAPI |
 | **python-dotenv** | Load API keys from `.env` without exposing them in code |
-| **asyncio + ThreadPoolExecutor** | Run multiple company analyses in parallel (Tavily+Groq calls are synchronous, so they run in a thread pool) |
+| **asyncio + ThreadPoolExecutor** | Run multiple company analyses in parallel |
 
 ---
 
@@ -115,13 +128,12 @@ Type any company name. The AI autonomously searches the web — funding history,
 
 | File | What it does |
 |---|---|
-| `main.py` | The entire API. Defines all routes. Holds `_token_cache` (updated on 429 errors — never makes a Groq call just to check quota). Handles multi-company splitting (comma or "and" separated names), parallel async execution via `ThreadPoolExecutor`, and CORS for `localhost:3000/3001`. |
-| `company_analyser.py` | Brain of the Company Analyser. `_research()` fires 5 Tavily searches and compiles context. `analyse_company()` chooses between user-pasted data or autonomous research, then calls Groq with a structured JSON prompt. `_parse()` strips markdown fences and extracts valid JSON. Uses `llama-3.1-8b-instant` with `max_tokens=1500` to preserve quota. |
-| `prompt.py` | Builds the structured prompt for the Feedback Analyser. Contains VC-framework scoring instructions and the JSON schema the LLM must return. Also builds the chat system prompt with full analysis context injected. |
-| `rag.py` | Retrieval-Augmented Generation engine. Given a query, scores all VC framework documents using BM25 keyword overlap and returns the top 3 most relevant chunks to inject into the LLM prompt. Pure Python — no vector DB needed. |
-| `knowledge_base.py` | The VC knowledge library — text documents covering PMF theory, moat models, retention analysis, churn frameworks, and investor scoring rubrics. These ground the LLM in real investment frameworks rather than generic knowledge. |
-| `.env` | Stores `GROQ_API_KEY` and `TAVILY_API_KEY`. Excluded from git via `.gitignore`. |
-| `requirements.txt` | `fastapi`, `uvicorn`, `groq`, `python-dotenv`, `pydantic`, `tavily-python` |
+| `main.py` | The entire API. All routes, CORS config, token cache, file extraction endpoint. Feedback is trimmed to 3,000 chars before LLM call. JSON mode enforced on all Groq calls. Token cache updated from `response.usage.total_tokens` after every successful call. |
+| `company_analyser.py` | Brain of the Company Analyser. `_research()` fires 5 Tavily searches. `analyse_company()` calls Groq with JSON mode. Returns `(result, tokens)` tuple so `main.py` can accumulate token counts from parallel analyses. |
+| `prompt.py` | Builds the structured prompt for the Feedback Analyser. When no product name is provided, instructs the LLM to infer it from the feedback and return it as `product_name` in the JSON. Also builds the chat system prompt. |
+| `rag.py` | BM25 keyword retrieval over VC framework documents. Returns top 2 most relevant chunks for a given query. |
+| `knowledge_base.py` | VC knowledge library — PMF theory, moat models, retention analysis, churn frameworks, investor scoring rubrics. |
+| `requirements.txt` | `fastapi`, `uvicorn`, `groq`, `python-dotenv`, `pydantic`, `tavily-python`, `pypdf`, `python-docx`, `python-multipart` |
 
 ---
 
@@ -131,50 +143,56 @@ Type any company name. The AI autonomously searches the web — funding history,
 
 | File | What it does |
 |---|---|
-| `app/layout.tsx` | Root layout. Injects dark mode script (reads `localStorage`). Wraps all pages in `SplashWrapper` so the 3D intro animation shows once per session. |
-| `app/globals.css` | Global styles + custom CSS keyframes: `fade-up`, `fade-in`, `ticker` (scrolling marquee), `scan` (scan-line effect), `pulse-red`. Also defines `.bg-red-grid` (subtle red dot-grid background) and `.glow-red` utility classes. |
-| `app/page.tsx` | Feedback Analyser home. Full-width 2-column layout: left = headline + form, right = live sample analysis preview panel. Red/black theme. Scrolling ticker bar — shows your real past analyses from `localStorage` (`fb_history`); falls back to hardcoded samples on first visit. Recent analyses list with per-item delete button. Calls `/analyse`, stores result in `sessionStorage`, routes to `/result`. |
-| `app/result/page.tsx` | Feedback results page. Renders radar chart, 5 score bars (each a unique colour), bull/bear cases, risk flags, investment memo, and AI analyst chat. |
-| `app/company/page.tsx` | Company Analyser input. Red/black theme matching Feedback Analyser. Full-width 2-column layout: left = form, right = "What AI Researches" preview panel. Scrolling ticker — pulls real past company analyses from `localStorage` (`company_history`), falls back to samples on first visit. Recent analyses list with per-item delete button and click-to-reload. Live `TokenBar` in header. Comma or "and" separated names trigger compare mode. |
-| `app/company/result/page.tsx` | Single-company result page. Shows INVEST/WATCH/PASS verdict, 3 scores, SWOT 2×2 grid, competitive threat map, bull/bear case, and chat. |
-| `app/company/compare/page.tsx` | Multi-company comparison — full-width, 3 titled sections: (1) grouped SVG bar chart + signal snapshot + per-company score cards, (2) SWOT sub-tabs + competitive map, (3) ranked verdict cards + inline AI analyst chat knowing all companies. |
+| `app/layout.tsx` | Root layout. Dark mode script, `SplashWrapper`. |
+| `app/globals.css` | Global styles, keyframes, light-mode overrides (`html:not(.dark)` selectors for pages that use hardcoded dark Tailwind classes). |
+| `app/page.tsx` | **Landing page.** Two centered tool cards (red = Feedback Analyser → `/feedback`, blue = Company Analyser → `/company`). Live scrolling ticker pulls from both tools' `localStorage` history. Fires a `/health` ping on load to pre-warm the Render backend. |
+| `app/feedback/page.tsx` | Feedback Analyser. Tab toggle between paste and file upload. `.txt` files read in-browser; `.pdf`/`.docx` sent to `/extract-text`. Product name auto-inferred from filename. Auto-retry with 55s countdown on network failure (Render cold start). Calls `/analyse`, stores result in `sessionStorage`, routes to `/result`. |
+| `app/result/page.tsx` | Feedback results. Radar chart, 5 score bars, bull/bear cases, risk flags, investment memo, AI analyst chat. **Verdict legend** (INVEST / WATCH / PASS with definitions) shown below the verdict banner, with the current result highlighted. |
+| `app/company/page.tsx` | Company Analyser input. Same cold-start auto-retry as feedback page. Multi-company compare mode via comma-separated names. |
+| `app/company/result/page.tsx` | Single-company result. INVEST/WATCH/PASS verdict, 3 scores, SWOT 2×2, competitive threat map, bull/bear, chat. |
+| `app/company/compare/page.tsx` | Multi-company comparison. Grouped bar chart, per-company score cards, SWOT sub-tabs, ranked verdict cards, shared AI analyst. |
 
 #### Components (`/components`)
 
 | File | What it does |
 |---|---|
-| `SplashScreen.tsx` | Full-screen 3D intro animation. Black background with red grid, scan-line, radial glows. "FB Analyser" title zooms in using CSS `perspective` + `rotateX`. Progress bar fills over 2.2s. Fades out after ~3s. |
-| `SplashWrapper.tsx` | Client component wrapping all pages. Checks `sessionStorage` for `splash_shown` — if not set, renders `SplashScreen` and fades in the page content behind it. Shows splash only once per browser tab session. |
-| `RadarChart.tsx` | Pure SVG radar/spider chart. Plots 5 dimensions on a pentagon. Each dot is coloured per metric with the score number inside. Ring scale labels at 2.5, 5, 7.5, 10. |
-| `ScoreBar.tsx` | Animated horizontal progress bar for a single score. Accepts label, score, definition text, and accent colour. Animates from 0 on mount. |
-| `ChatBox.tsx` | Reusable chat UI. Accepts `apiEndpoint` and `buildPayload` props — works for feedback chat (`/chat`) and company chat (`/company-chat`) without code duplication. |
-| `InvestmentGauge.tsx` | SVG semicircle gauge showing overall investment score. Needle animates to score position on mount. |
-| `TokenBar.tsx` | Live Groq token quota indicator in the Company Analyser header. Polls `/token-usage` on mount and every 5 minutes. Colour-coded bar (green → amber → red as quota fills). Hover tooltip shows used / remaining / daily limit / reset time. Does not burn tokens — endpoint returns cached data only. |
-| `ThemeToggle.tsx` | Dark/light mode toggle. Writes `dark` class to `<html>` and persists preference to `localStorage`. |
+| `SplashScreen.tsx` | Intro animation. "Product Analyser" title, ~4 second duration, red/black theme, progress bar. |
+| `SplashWrapper.tsx` | Shows `SplashScreen` once per tab session (checks `sessionStorage`). |
+| `RadarChart.tsx` | Pure SVG pentagon radar chart. 5 colour-coded dimensions, score labels inside dots. |
+| `ScoreBar.tsx` | Animated score bar. Label, score, definition text, accent colour, reasoning text. |
+| `ChatBox.tsx` | Reusable chat UI. `apiEndpoint` + `buildPayload` props — works for feedback and company chat. |
+| `InvestmentGauge.tsx` | SVG semicircle gauge. Animated needle. |
+| `TokenBar.tsx` | Groq token quota bar in the header. Polls `/token-usage` every 60s. Colour-coded green → amber → red. Tooltip shows used / remaining / limit / reset time. Visible in both light and dark modes. |
+| `ThemeToggle.tsx` | Dark/light toggle. Persists to `localStorage`. |
+| `VerdictBadge.tsx` | Hero verdict banner (INVEST / WATCH / PASS) with score and confidence. |
 
 ---
 
 ## What Is RAG? (Plain English)
 
-**RAG stands for Retrieval-Augmented Generation.**
+**RAG = Retrieval-Augmented Generation.**
 
-Think of the AI as a very smart person who can write well but doesn't have a specific textbook in front of them. Without RAG, if you ask the AI to score product-market fit, it uses general knowledge from its training — which might be vague or inconsistent.
+Without RAG, the LLM scores based on whatever investment knowledge leaked into its training — unpredictable and hard to audit.
 
-**RAG solves this by handing the AI the right pages from the right textbook before it answers.**
+**RAG works in 3 steps:**
 
-Analogy: imagine you ask a consultant to score a startup. Without prep, they'll give a generic answer. But if you hand them the Y Combinator PMF checklist, Andreessen Horowitz's moat framework, and a churn analysis rubric *before* they respond — their answer is grounded, specific, and far more useful.
+1. **Store** — `knowledge_base.py` contains text documents: PMF theory, moat models, retention analysis, churn frameworks, VC scoring rubrics.
 
-**That's exactly what RAG does here:**
+2. **Retrieve** — When a user submits feedback, `rag.py` uses BM25 (keyword overlap) to find the top 2 most relevant framework documents for that specific product.
 
-1. **Store** — `knowledge_base.py` contains text documents covering PMF theory, moat models, retention analysis, and VC scoring frameworks.
+3. **Augment** — Those documents are injected at the top of the LLM prompt: *"Here are the relevant VC frameworks. Now score this feedback."*
 
-2. **Retrieve** — When a user submits feedback, `rag.py` uses BM25 scoring (keyword overlap) to find the 2–3 most relevant framework documents for that specific product and feedback.
+Every score is explicitly grounded in the same frameworks a real VC analyst would use — not just vibes.
 
-3. **Augment** — Those documents are injected into the top of the LLM prompt: *"Here are the relevant VC frameworks. Now score this feedback."*
+---
 
-4. **Generate** — Groq's LLM reads the frameworks AND the feedback, then produces scores grounded in actual investment logic — not just vibes.
+## Verdict Guide
 
-**Why use RAG in this app?** Without it, the LLM scores are based on whatever investment knowledge leaked into its training — unpredictable and hard to audit. With RAG, every score is explicitly grounded in the same frameworks a real VC analyst would use, making the output trustworthy and consistent run-to-run.
+| Verdict | Score | Meaning |
+|---|---|---|
+| **INVEST** | 7–10 | Strong conviction — compelling investment opportunity with clear PMF and growth signals |
+| **WATCH** | 4–6 | Promising but not proven — monitor the space and wait for stronger signals |
+| **PASS** | 1–3 | Weak fundamentals or poor PMF — not a compelling opportunity at this stage |
 
 ---
 
@@ -182,12 +200,12 @@ Analogy: imagine you ask a consultant to score a startup. Without prep, they'll 
 
 | Service | URL |
 |---|---|
-| **Frontend** (Vercel) | https://product-fb-analyser-q6c77ew7l-app-demo1.vercel.app |
+| **Frontend** (Vercel) | https://product-fb-analyser.vercel.app |
 | **Backend** (Render) | https://product-fb-analyser.onrender.com |
 
-The frontend auto-deploys from `main` via Vercel. The backend auto-deploys from `main` via Render. All API calls in the frontend point to the Render URL; CORS is configured to allow the Vercel origin.
+The frontend auto-deploys from `main` via Vercel. The backend auto-deploys from `main` via Render.
 
-> **Note:** Render's free tier spins down after 15 minutes of inactivity. The first request after a cold start may take 30–60 seconds to respond.
+> **Render free tier note:** The backend sleeps after 15 minutes of inactivity. The app mitigates this by firing a silent `/health` ping on every page load to pre-warm the backend. If a request still fails (cold start takes up to 60s), both tools automatically retry after a 55-second countdown — no user action needed.
 
 ---
 
@@ -197,7 +215,7 @@ The frontend auto-deploys from `main` via Vercel. The backend auto-deploys from 
 ```bash
 cd backend
 pip install -r requirements.txt
-# Create .env with your keys (see below)
+# Create .env with your keys
 uvicorn main:app --reload --port 8000
 ```
 
@@ -217,10 +235,10 @@ TAVILY_API_KEY=your_tavily_key_here
 ```
 
 Get keys at:
-- Groq: https://console.groq.com (free tier: 500K tokens/day with `llama-3.1-8b-instant`)
+- Groq: https://console.groq.com (free tier: 500K tokens/day)
 - Tavily: https://app.tavily.com (free tier: 1,000 searches/month)
 
-### What's in `.gitignore`
+### `.gitignore`
 ```
 node_modules/
 .venv/
