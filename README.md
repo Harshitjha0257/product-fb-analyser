@@ -18,6 +18,63 @@ Type any company name. The AI autonomously searches the live web — funding his
 
 ---
 
+## Why These Four Services?
+
+Every tool in this stack was a deliberate choice. Here is why each one beats the obvious alternatives.
+
+### Groq — not OpenAI, not Anthropic, not Mistral
+
+| Alternative | Why Groq wins |
+|---|---|
+| OpenAI GPT-4o | 10–20× slower on GPU hardware; costs money at scale; no equivalent free tier for structured JSON output |
+| Anthropic Claude | Same GPU latency problem; free tier is very limited |
+| Mistral (self-hosted) | Requires infrastructure, GPU costs, and ops overhead |
+| Ollama (local) | Not viable for a deployed web app — depends on the user's machine |
+
+Groq runs on custom **LPU (Language Processing Unit)** silicon, not GPUs. For a tool where users are waiting for analysis results in real time, that 10–20× speed advantage is decisive. The free tier gives **500,000 tokens/day** for `llama-3.1-8b-instant` — enough for hundreds of full analyses. JSON mode (`response_format={"type":"json_object"}`) forces the model to output valid JSON at the API level, eliminating parsing failures entirely.
+
+---
+
+### Tavily — not SerpAPI, not Google Search API, not BeautifulSoup scraping
+
+| Alternative | Why Tavily wins |
+|---|---|
+| Google Custom Search API | Returns raw URLs and snippets — you still have to scrape and parse each page |
+| SerpAPI / Bing Search | Same problem — raw HTML, no content extraction, expensive per-call pricing |
+| Scrapy / BeautifulSoup | Requires a scraping pipeline, proxy rotation, and constant maintenance as sites change |
+| Wikipedia API | Static; misses recent funding rounds, reviews, and news |
+
+Tavily is purpose-built for AI agents. It searches the live web and returns **clean, ready-to-use text summaries** — no scraping, no HTML parsing, no JavaScript rendering. The `include_answer` field gives a short direct answer per query, which goes straight into the LLM prompt. Five targeted searches per company (overview, funding, reviews, competitors, news) give the LLM enough real-world signal to produce an analysis that references actual facts, not just training-data vibes. Free tier: **1,000 searches/month**.
+
+---
+
+### Vercel — not Netlify, not AWS Amplify, not Railway
+
+| Alternative | Why Vercel wins |
+|---|---|
+| Netlify | Good general static host, but Next.js support is second-class — Server Components, App Router edge cases require workarounds |
+| AWS Amplify | Complex setup, IAM configuration, slower CI pipeline |
+| Railway / Render (frontend) | No native Next.js integration; treats it as a generic Node app |
+| GitHub Pages | Static only — cannot run Next.js server-side features |
+
+Vercel **built Next.js**. App Router, Server Components, edge functions, image optimisation — all work with zero configuration because Vercel designed the spec and the host simultaneously. Every `git push` to `main` triggers an automatic production deploy in under 90 seconds, with a unique preview URL for every pull request. Global CDN means the frontend loads fast regardless of where the user is.
+
+---
+
+### Render — not Heroku, not AWS Lambda, not Fly.io
+
+| Alternative | Why Render wins |
+|---|---|
+| Heroku | Removed its free tier in November 2022; paid plans start at $7/month per dyno |
+| AWS Lambda | Cold starts are unpredictable; FastAPI on Lambda requires extra packaging (Mangum adapter); async behaviour differs |
+| Fly.io | More powerful but requires Dockerfile and CLI-based deployment; steeper learning curve |
+| Google Cloud Run | Same containerisation overhead; billing complexity |
+| Railway | Free tier is usage-based and can surprise with bills; less stable for always-on services |
+
+Render is the natural successor to Heroku's free tier. Deploying a FastAPI app requires only a `requirements.txt` and a start command — no Docker, no YAML manifests. Auto-deploy from GitHub on every push. The **free tier sleeps after 15 minutes of inactivity** (the only real trade-off), which this app mitigates with a silent `/health` pre-warm ping on every page load and a 55-second auto-retry countdown on the first failed request.
+
+---
+
 ## Architecture
 
 ```
